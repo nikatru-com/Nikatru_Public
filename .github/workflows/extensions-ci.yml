@@ -10,6 +10,8 @@ on:
     secrets:
       PRIVATE_DEPLOY_KEY:
         required: true
+      NIKATRU_DETAIL_KEY:
+        required: true
 
 permissions:
   contents: read
@@ -45,6 +47,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -63,6 +67,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
       - name: No package manager, no bundler, no transpiler under extensions/
@@ -92,16 +98,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.build-free.4 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.build-free.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -137,6 +145,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -155,6 +165,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
       - name: contract.json is what contract.js derives
@@ -181,16 +193,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.contracts.5 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.contracts.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -223,6 +237,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -241,6 +257,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - name: Every gate script these workflows call must exist
         shell: bash
@@ -371,16 +389,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.gate-inventory.5 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.gate-inventory.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -417,6 +437,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -435,6 +457,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
       - name: Cross-check discovery against the filesystem
@@ -522,16 +546,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.discover.6 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.discover.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -563,6 +589,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -581,6 +609,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
       - run: |
@@ -590,16 +620,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.secrets-scan.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.secrets-scan.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -632,6 +664,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -650,6 +684,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
       - name: Delete the catalogue so the publisher has to produce it
@@ -717,16 +753,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.catalogue.10 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.catalogue.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -759,6 +797,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -777,6 +817,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
       - name: Lint + run core sims
@@ -824,16 +866,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.core.6 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.core.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -873,6 +917,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -891,6 +937,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
       - name: Syntax check every shipped script
@@ -959,16 +1007,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.gates.10 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.gates.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -1008,6 +1058,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -1026,6 +1078,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
         with:
@@ -1038,16 +1092,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.sims.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.sims.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -1088,6 +1144,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -1106,6 +1164,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
       - name: Build package
@@ -1153,16 +1213,18 @@ jobs:
         run: |
           npm ci --ignore-scripts --prefix ../tooling/web-ext
           ../tooling/web-ext/node_modules/.bin/web-ext lint --source-dir dist/unpacked-firefox --warnings-as-errors
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.package.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -1201,6 +1263,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -1219,6 +1283,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
       - name: Firefox on the image
@@ -1264,16 +1330,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.gecko.5 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.gecko.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -1306,6 +1374,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -1324,6 +1394,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
       - name: Every gate must be proven to fail on a real mutation
@@ -1359,16 +1431,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.selftest.6 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.selftest.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -1401,6 +1475,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -1419,6 +1495,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
       - name: Every script under templates/ must parse
@@ -1601,16 +1679,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.templates.7 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.templates.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -1651,6 +1731,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -1669,6 +1751,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
       - name: The box, port and restore-drill tests pass on this OS
@@ -1682,16 +1766,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.ops-tooling.3 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.ops-tooling.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -1741,6 +1827,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -1759,6 +1847,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - name: Every job in this workflow is accounted for, and every outcome is graded
         shell: bash
@@ -1944,16 +2034,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.ci-required.2 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.ci-required.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -1986,6 +2078,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -2004,6 +2098,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
       - name: The weekly e2e proof must be RECENT, SCHEDULED and GREEN
@@ -2017,16 +2113,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions-ci.e2e-proof-fresh.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions-ci.e2e-proof-fresh.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'

@@ -14,6 +14,8 @@ on:
         required: true
       PRIVATE_DEPLOY_KEY:
         required: true
+      NIKATRU_DETAIL_KEY:
+        required: true
 
 concurrency:
   group: platform-db-migrate
@@ -49,6 +51,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -67,6 +71,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - name: Refuse any ref but main
         run: node tooling/ci/assert-deploy-ref.mjs --allow main

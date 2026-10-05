@@ -13,8 +13,8 @@
 # The report secret exists in the report job's last two steps (the send and its
 # no-detail fallback) and nowhere else in the shell (limb H): a step that runs
 # pull-request code never holds it, and the job that holds it restores nothing
-# another job saved (limb I). NIKATRU_DETAIL_KEY is in the collect job's last step
-# and the report job's send step only (limb J).
+# another job saved (limb I). NIKATRU_DETAIL_KEY is in each quiet job's hand-off
+# step and the report job's send step only (limb J).
 #
 # Why Python: the job must run without the private tree, so the reporter is a
 # file of the shell repository, and it needs nothing but the standard library
@@ -24,20 +24,31 @@
 # by-design flow, and
 # tooling/ci/test/shell-report.test.mjs grades it.
 #
+#   Every quiet job hands its red detail over SEALED (lead ruling p7-bridge-payload-r3,
+#   item 3: the private repo's test output and PR text never sit in plain text in the
+#   PUBLIC repo's Actions cache). Its generated hand-off step runs, from the private
+#   checkout, this same file:
+#   shell-report.py handoff the tail of $RUNNER_TEMP/report-detail.md, sealed with
+#                           NIKATRU_DETAIL_KEY and bound to its own cache key
+#                           (NIKATRU_HANDOFF), written as .nikatru-detail/detail.sealed,
+#                           and `has=true` to $GITHUB_OUTPUT so actions/cache/save runs;
+#                           no key, no hand-off: nothing is ever cached in the clear
+#
 #   Two generated jobs per root workflow, so the job that holds the report secret
 #   never restores what a job that ran pull-request code saved (review of #1234,
 #   finding B: an actions/cache archive is shaped by whoever saved it, not by the
 #   restore's `path:`, and can overwrite this very file):
 #
-#   nikatru-collect — NO report secret. Restores the hand-offs and seals the detail:
+#   nikatru-collect — NO report secret, NO detail key. Restores the sealed hand-offs:
 #   report.py plan <cfg>    list this run+attempt's detail hand-offs (actions/cache
 #                           keys) and write key_0..key_<n-1> and `overflow` to
 #                           $GITHUB_OUTPUT; the job restores each into .nikatru-detail/
-#   report.py place <key>   move the restored .nikatru-detail/detail.md to
-#                           .nikatru-collected/<key>.md
-#   report.py collect <cfg> the detail of every lane and the gate as ONE bundle,
-#                           size-bounded, sealed with NIKATRU_DETAIL_KEY, written as
-#                           the job output `detail`
+#   report.py place <key>   move the restored .nikatru-detail/detail.sealed to
+#                           .nikatru-collected/<key>.sealed
+#   report.py collect <cfg> every restored hand-off, carried through UNCHANGED (still
+#                           sealed), as ONE JSON bundle {v, handoffs: {key: sealed},
+#                           unrestored: [key]} within SEALED_MAX_CHARS, written as the
+#                           job output `detail`; one that does not fit is named only
 #
 #   nikatru-report — the report secret; restores nothing, runs nothing another job
 #   wrote (assert-public-shell.mjs limb I). A fresh sparse checkout of this shell, then
@@ -46,24 +57,28 @@
 #                           NIKATRU_RESULTS, so a green re-run clears a red one), then
 #                           the gate's. The bundle arrives as NIKATRU_DETAIL, plain
 #                           data in `env:`; it is unsealed, parsed and checked against
-#                           the config (known contexts, string values, size caps), and
-#                           any bundle that fails — any error at all, deep nesting too —
-#                           is dropped: the statuses still go out. Having attempted every
+#                           its own key (known members of this run+attempt, size caps).
+#                           A bundle that fails — another key, another run, a hand-off
+#                           moved to another key, altered, malformed — is COVERAGE LOST:
+#                           every status still goes out without detail, and the step
+#                           exits 2, never an empty pass. Having attempted every
 #                           status it writes `reported=true` to $GITHUB_OUTPUT (a file).
 #   The report job's LAST step runs the same `send` WITHOUT the detail, if that output is
 #   not `true`: the step above never started (a job output may be 1 MB, and Linux refuses
 #   to start a process with one environment string over 128 KiB), or it died. So no
 #   hand-off can withhold the statuses (review of #1245, finding 1).
 #
-# Why sealed: an artifact of a public repository is downloadable by anyone signed in
+# Why sealed AT HAND-OFF: an actions/cache entry of a public repository's default-branch
+# scope can be restored by a later run of that repository (a fork's pull_request run
+# included, where Actions lets one run), an artifact is downloadable by anyone signed in
 # (limb C), and a job output reaches a step only through an expression, whose value the
-# runner prints in the step's public log header. So the bundle is encrypted and
-# authenticated (HMAC-SHA256 in counter mode as the keystream, encrypt-then-MAC, the
-# run+attempt bound in) under NIKATRU_DETAIL_KEY, which both jobs hold. A job that
-# poisons nikatru-collect's workspace already ran pull-request code with the deploy
-# key, so that key protects the detail from outsiders only; the worst a poisoned
-# hand-off can do to the report job is change or drop the detail text, which a red
-# step can already do. Without the key, the reports go out without detail.
+# runner prints in the step's public log header. So each hand-off is encrypted and
+# authenticated (HMAC-SHA256 in counter mode as the keystream, encrypt-then-MAC, its own
+# cache key — run, attempt, job — bound in) BEFORE actions/cache/save, under
+# NIKATRU_DETAIL_KEY, held by the hand-off steps and the report job's send step. The
+# hand-off steps run pull-request code of the PRIVATE repository, whose authors already
+# read its pull requests; the key keeps the detail from everyone else. The worst a
+# poisoned hand-off can do to the report job is drop the detail and red that step.
 #
 # The bridge's contract (services/gh-bridge/src/report.ts parseReport):
 #   POST <bridgeUrl>   x-bridge-signature: sha256=<HMAC-SHA256 of the raw body>
@@ -79,10 +94,11 @@
 # verdict the landers gate on. The bridge itself holds the context to this workflow's own
 # set (services/gh-bridge/src/generated/shell.ts, written by gen-public-shell.mjs).
 #
-# Exit 0 every report accepted (collect: the bundle sealed) · 1 a report refused or
-# not delivered (a verdict that did not land must not look green) · 2 COVERAGE LOST:
-# no config, no bridge URL, no secret, no sha — nothing could be signed or sent
-# (collect: no detail key, so no detail can travel).
+# Exit 0 every report accepted (handoff: sealed, or nothing to hand over; collect: the
+# bundle written) · 1 a report refused or not delivered (a verdict that did not land
+# must not look green) · 2 COVERAGE LOST: no config, no bridge URL, no secret, no sha —
+# nothing could be signed or sent; send: a detail bundle that does not unseal (the
+# statuses went out without it); handoff: no key or no hand-off key, so nothing handed.
 # ─────────────────────────────────────────────────────────────────────────────
 import base64
 import hashlib
@@ -102,10 +118,16 @@ DETAIL_MAX_BYTES = 60 * 1024
 CONTEXT = re.compile(r'^[A-Za-z0-9][A-Za-z0-9 ._/():-]{0,99}$')
 SHA = re.compile(r'^[0-9a-f]{40}$')
 STATE_OF = {'success': 'success', 'failure': 'failure', 'cancelled': 'error'}
-# The plain bundle's cap: sealed and base64'd it stays under SEALED_MAX_CHARS, so it fits
-# one environment variable (Linux caps one at 128 KiB) and a job output (1 MB).
-BUNDLE_MAX_BYTES = 88 * 1024
+# The collect output's cap: it fits one environment variable (Linux caps one at 128 KiB)
+# and a job output (1 MB).
 SEALED_MAX_CHARS = 120 * 1024
+# One hand-off's plain tail: sealed, at least four fit in the collect output; the rest
+# that do not fit are named in the gate's detail.
+HANDOFF_MAX_BYTES = 16 * 1024
+HANDOFF_PREFIX = 'nikatru-detail-'
+DETAIL_FILE = 'report-detail.md'
+SEALED_FILE = 'detail.sealed'
+BUNDLE_VERSION = 2
 SEAL_VERSION = b'\x01'
 NONCE_BYTES = 16
 TAG_BYTES = 32
@@ -229,37 +251,37 @@ def unseal(key, run, sealed):
     return _keystream_xor(enc, nonce, ct)
 
 
-def fit_bundle(details, cap=BUNDLE_MAX_BYTES):
-    """{context: detail} as compact JSON bytes within `cap`: over it, every detail keeps an
-    equal, shrinking share of its own tail; past the smallest share, no detail at all."""
-    share = DETAIL_MAX_BYTES
-    while True:
-        raw = json.dumps({c: tail_bytes(t, share) for c, t in details.items()}, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
-        if len(raw) <= cap:
-            return raw
-        if share <= 1024:
-            return b'{}'
-        share = share * 3 // 4
+def handoff_key_ok(name, env):
+    """True when `name` is a hand-off cache key of this run+attempt: `nikatru-detail-<run>-<attempt>-<member>.<n>`."""
+    return bool(re.match(r'^[A-Za-z0-9._-]{1,400}$', name)) and member_of(name, f'{HANDOFF_PREFIX}{run_of(env)}-') is not None
 
 
-def parse_bundle(plain, cfg):
-    """The plain bundle as {context: detail}, or Refused: JSON, an object, only the
-    config's contexts, string values within the caps. Data only: nothing in it is run."""
-    if len(plain) > BUNDLE_MAX_BYTES:
-        raise Refused(f'{len(plain)} bytes, over the {BUNDLE_MAX_BYTES} cap')
+# ── handoff ──────────────────────────────────────────────────────────────────
+
+def handoff(env):
+    """Seal this job's red detail for the cache: plain text never reaches actions/cache/save."""
     try:
-        bundle = json.loads(plain.decode('utf-8'))
-    except Exception as e:  # RecursionError (deep nesting) is a RuntimeError, not a ValueError
-        raise Refused(f'not UTF-8 JSON this reporter can read ({type(e).__name__})')
-    if not isinstance(bundle, dict):
-        raise Refused('not a JSON object')
-    known = {c['context'] for c in [cfg['gate']] + list(cfg['lanes'])}
-    for c, text in bundle.items():
-        if c not in known:
-            raise Refused(f'{c[:100]!r} is not a status context of this config')
-        if not isinstance(text, str) or len(text.encode('utf-8')) > DETAIL_MAX_BYTES:
-            raise Refused(f'the detail of {c!r} is not a string within {DETAIL_MAX_BYTES} bytes')
-    return bundle
+        with open(os.path.join(env.get('RUNNER_TEMP', ''), DETAIL_FILE), encoding='utf-8', errors='replace') as f:
+            text = f.read()
+    except OSError:
+        text = ''
+    if not text.strip():
+        print('-- handoff: no red detail to hand over')
+        return 0
+    name = env.get('NIKATRU_HANDOFF', '')
+    if not handoff_key_ok(name, env):
+        raise Lost(f'NIKATRU_HANDOFF {name[:100]!r} is not a hand-off key of this run and attempt: nothing handed over')
+    key = env.get('NIKATRU_DETAIL_KEY', '')
+    if not key:
+        raise Lost('NIKATRU_DETAIL_KEY is not set: the red detail is NOT handed over (it is never cached in plain text)')
+    plain = tail_bytes(text, HANDOFF_MAX_BYTES).encode('utf-8')
+    os.makedirs(DETAIL_DIR, exist_ok=True)
+    with open(os.path.join(DETAIL_DIR, SEALED_FILE), 'w', encoding='ascii') as f:
+        f.write(seal(key, name, plain))
+    with open(env['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
+        f.write('has=true\n')
+    print(f'ok handoff: {len(plain)} byte(s) of red detail sealed for {name}')
+    return 0
 
 
 # ── plan ─────────────────────────────────────────────────────────────────────
@@ -306,12 +328,12 @@ def plan(env, cfg):
 # ── place ────────────────────────────────────────────────────────────────────
 
 def place(key):
-    src = os.path.join(DETAIL_DIR, 'detail.md')
+    src = os.path.join(DETAIL_DIR, SEALED_FILE)
     if not re.match(r'^[A-Za-z0-9._-]+$', key) or not os.path.isfile(src):
         print(f'x place: no restored detail for {key!r}')
         return 1
     os.makedirs(COLLECTED_DIR, exist_ok=True)
-    shutil.move(src, os.path.join(COLLECTED_DIR, f'{key}.md'))
+    shutil.move(src, os.path.join(COLLECTED_DIR, f'{key}.sealed'))
     shutil.rmtree(DETAIL_DIR, ignore_errors=True)
     print(f'ok place: {key}')
     return 0
@@ -320,16 +342,17 @@ def place(key):
 # ── collect ──────────────────────────────────────────────────────────────────
 
 def collected(prefix):
-    """{member: [detail text, ...]} from .nikatru-collected/, in key order."""
+    """{key: sealed text} of this run+attempt's hand-offs in .nikatru-collected/, in key order.
+    Carried as they are: this job holds no key, so it can neither read nor reseal them."""
     out = {}
     if not os.path.isdir(COLLECTED_DIR):
         return out
     for name in sorted(os.listdir(COLLECTED_DIR)):
-        member = member_of(name[:-3], prefix) if name.endswith('.md') else None
-        if member is None:
+        key = name[:-len('.sealed')] if name.endswith('.sealed') else None
+        if key is None or member_of(key, prefix) is None:
             continue
-        with open(os.path.join(COLLECTED_DIR, name), encoding='utf-8', errors='replace') as f:
-            out.setdefault(member, []).append(f.read())
+        with open(os.path.join(COLLECTED_DIR, name), encoding='ascii', errors='replace') as f:
+            out[key] = f.read().strip()
     return out
 
 
@@ -373,56 +396,80 @@ def post(url, secret, body, opener=urllib.request.urlopen):
         return 0, str(e)[:200]
 
 
-def bundle_details(env, cfg):
-    """{context: detail} of every lane and the gate, from this run's collected hand-offs;
-    the gate's names the red jobs whose detail no restore slot carried."""
-    prefix = run_prefix(cfg, env)
-    details = collected(prefix)
-    overflow = [k for k in env.get('NIKATRU_OVERFLOW', '').split(',') if k]
-    out = {}
-    for item in list(cfg['lanes']) + [cfg['gate']]:
-        detail = detail_for(item['members'], details)
-        if item is cfg['gate'] and overflow:
-            detail += '\n\n(' + str(len(overflow)) + ' more red job(s) handed over detail this report could not restore: ' + ', '.join(member_of(k, prefix) or k for k in overflow) + ')\n'
-        if detail.strip():
-            out[item['context']] = detail
-    return out
-
-
 def collect(env, cfg):
+    """The sealed hand-offs, carried through unchanged as one bundle within SEALED_MAX_CHARS;
+    the restore slots' overflow and any hand-off that does not fit are named, not carried."""
+    prefix = run_prefix(cfg, env)
+    handed = collected(prefix)
+    unrestored = [k for k in env.get('NIKATRU_OVERFLOW', '').split(',') if k and member_of(k, prefix)]
+    bundle = {'v': BUNDLE_VERSION, 'handoffs': {}, 'unrestored': unrestored}
+    for key, sealed in handed.items():
+        bundle['handoffs'][key] = sealed
+        if len(json.dumps(bundle, separators=(',', ':'))) > SEALED_MAX_CHARS - 1024:
+            del bundle['handoffs'][key]
+            bundle['unrestored'].append(key)
+    text = json.dumps(bundle, separators=(',', ':'))
     with open(env['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
-        key = env.get('NIKATRU_DETAIL_KEY', '')
-        if not key:
-            f.write('detail=\n')
-            raise Lost('NIKATRU_DETAIL_KEY is not set: no detail can travel to the report job (its statuses still go out)')
-        details = bundle_details(env, cfg)
-        plain = fit_bundle(details)
-        f.write('detail=' + seal(key, run_of(env), plain) + '\n')
-    print(f'ok collect: detail for {len(details)} status(es), {len(plain)} byte(s) sealed for the report job')
+        f.write('detail=' + (text if handed or unrestored else '') + '\n')
+    print(f'ok collect: {len(bundle["handoffs"])} sealed hand-off(s) carried, {len(bundle["unrestored"])} named only')
     return 0
 
 
 # ── send ─────────────────────────────────────────────────────────────────────
 
 def received_details(env, cfg):
-    """The sealed bundle nikatru-collect handed over, unsealed and checked; {} when there is
-    none or it is refused. It is data: parsed as JSON, never run, imported or written out."""
-    sealed = env.get('NIKATRU_DETAIL', '')
-    if not sealed:
+    """({context: detail}, lost): the bundle nikatru-collect handed over, each hand-off unsealed
+    under its own key and checked. It is data: parsed as JSON, never run, imported or written
+    out. `lost` names why a bundle that was handed over could not be read: the reports then
+    go out without detail and the send exits 2 (COVERAGE LOST), never an empty pass."""
+    raw = env.get('NIKATRU_DETAIL', '')
+    if not raw:
         print('-- detail: none handed over; the reports go out without detail')
-        return {}
-    key = env.get('NIKATRU_DETAIL_KEY', '')
-    if not key:
-        print('x  detail: NIKATRU_DETAIL_KEY is not set; the reports go out without detail')
-        return {}
+        return {}, None
     try:
-        return parse_bundle(unseal(key, run_of(env), sealed), cfg)
+        return read_bundle(raw, env, cfg), None
     except Refused as e:
-        print(f'x  detail refused: {e}; the reports go out without detail')
-        return {}
+        return {}, f'the red detail could not be read: {e}; the reports went out without detail'
     except Exception as e:  # whatever a hand-off does, the statuses still go out
-        print(f'x  detail refused: it could not be read ({type(e).__name__}); the reports go out without detail')
-        return {}
+        return {}, f'the red detail could not be read ({type(e).__name__}); the reports went out without detail'
+
+
+def read_bundle(raw, env, cfg):
+    if len(raw) > SEALED_MAX_CHARS:
+        raise Refused(f'{len(raw)} characters, over the {SEALED_MAX_CHARS} cap')
+    try:
+        bundle = json.loads(raw)
+    except Exception as e:  # RecursionError (deep nesting) is a RuntimeError, not a ValueError
+        raise Refused(f'not JSON this reporter can read ({type(e).__name__})')
+    if not isinstance(bundle, dict) or bundle.get('v') != BUNDLE_VERSION or not isinstance(bundle.get('handoffs'), dict) or not isinstance(bundle.get('unrestored'), list):
+        raise Refused(f'not a version-{BUNDLE_VERSION} hand-off bundle')
+    prefix = run_prefix(cfg, env)
+    key = env.get('NIKATRU_DETAIL_KEY', '')
+    if bundle['handoffs'] and not key:
+        raise Refused('NIKATRU_DETAIL_KEY is not set')
+    details = {}
+    for name, sealed in bundle['handoffs'].items():
+        member = member_of(name, prefix) if re.match(r'^[A-Za-z0-9._-]{1,400}$', name) else None
+        if member is None or not isinstance(sealed, str):
+            raise Refused(f'{name[:100]!r} is not a hand-off of this run and attempt')
+        try:
+            plain = unseal(key, name, sealed)
+        except Refused as e:
+            raise Refused(f'hand-off {name!r}: {e}')
+        if len(plain) > HANDOFF_MAX_BYTES:
+            raise Refused(f'hand-off {name!r} is over the {HANDOFF_MAX_BYTES}-byte cap')
+        details.setdefault(member, []).append(plain.decode('utf-8', errors='replace'))
+    unrestored = [member_of(k, prefix) for k in bundle['unrestored'] if isinstance(k, str)]
+    if None in unrestored or len(unrestored) != len(bundle['unrestored']):
+        raise Refused('it names an unrestored hand-off that is not this run\'s')
+    out = {}
+    for item in list(cfg['lanes']) + [cfg['gate']]:
+        detail = detail_for(item['members'], details)
+        if item is cfg['gate'] and unrestored:
+            detail += '\n\n(' + str(len(unrestored)) + ' more red job(s) handed over detail this report could not carry: ' + ', '.join(unrestored) + ')\n'
+        if detail.strip():
+            out[item['context']] = detail
+    return out
 
 
 def gate_origin_ok(env):
@@ -447,7 +494,7 @@ def send(env, cfg, opener=urllib.request.urlopen):
         results = json.loads(env.get('NIKATRU_RESULTS', ''))
     except ValueError:
         raise Lost('NIKATRU_RESULTS is not the JSON map of job results the report job is given')
-    details = received_details(env, cfg)
+    details, lost = received_details(env, cfg)
     failed = 0
     for item in list(cfg['lanes']) + [cfg['gate']]:
         state = STATE_OF.get(results.get(item['job'], ''))
@@ -467,17 +514,22 @@ def send(env, cfg, opener=urllib.request.urlopen):
     if env.get('GITHUB_OUTPUT'):
         with open(env['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
             f.write('reported=true\n')
+    if lost:
+        print(f'x COVERAGE LOST - report.py: {lost}', file=sys.stderr)
+        return 2
     return 1 if failed else 0
 
 
 def main(argv, env):
     try:
+        if len(argv) == 1 and argv[0] == 'handoff':
+            return handoff(env)
         if len(argv) == 2 and argv[0] == 'place':
             return place(argv[1])
         if len(argv) == 2 and argv[0] in ('plan', 'collect', 'send'):
             cfg = load_config(argv[1])
             return {'plan': plan, 'collect': collect, 'send': send}[argv[0]](env, cfg)
-        print('usage: report.py plan <config> | place <key> | collect <config> | send <config>', file=sys.stderr)
+        print('usage: report.py handoff | plan <config> | place <key> | collect <config> | send <config>', file=sys.stderr)
         return 2
     except Lost as e:
         print(f'x COVERAGE LOST - report.py: {e}', file=sys.stderr)

@@ -18,6 +18,8 @@ on:
         required: true
       PRIVATE_DEPLOY_KEY:
         required: true
+      NIKATRU_DETAIL_KEY:
+        required: true
 
 concurrency:
   group: deploy-workers
@@ -50,6 +52,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -68,6 +72,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - name: The matrix comes from worker-set.mjs, never from this file
         id: set
@@ -84,16 +90,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name deploy-workers.workers.2 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job (generated)
+      - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
         shell: bash
         working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-deploy-workers.workers.${{ strategy.job-index }}
         run: |
           if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            mkdir -p .nikatru-detail
-            cp "$RUNNER_TEMP/report-detail.md" .nikatru-detail/detail.md
-            echo "has=true" >> "$GITHUB_OUTPUT"
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
           fi
       - name: Save the hand-off (generated)
         if: always() && steps.nikatru-handoff.outputs.has == 'true'
@@ -134,6 +142,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -152,6 +162,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - name: Refuse any ref but main
         run: node tooling/ci/assert-deploy-ref.mjs --allow main
@@ -239,6 +251,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -257,6 +271,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - name: Refuse any ref but main
         run: node tooling/ci/assert-deploy-ref.mjs --allow main
@@ -342,6 +358,8 @@ jobs:
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
           if [ "$NIKATRU_P_EVENT" = pull_request ]; then
@@ -360,6 +378,8 @@ jobs:
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - name: Refuse any ref but main
         run: node tooling/ci/assert-deploy-ref.mjs --allow main

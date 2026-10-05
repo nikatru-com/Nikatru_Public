@@ -7,20 +7,29 @@ verdict back to that repository. It is generated: a pull request here is not how
 
 - **Triggers**: `repository_dispatch` (types `ci` and `main`, sent by the bridge Worker for a
   pull request or a push in the private repository), plus `workflow_dispatch` and `schedule`.
+  `pr-recheck.yml` runs on the bridge's `nikatru-pr-recheck` (a pull request body or base
+  edit, or a draft conversion) and re-runs only the gate job of the ONE run named by the newest
+  gate status on the pull request's current head (read live through the bridge); nothing when the
+  head moved, and exit 1 when that run cannot be identified.
+  No dispatch carries pull request text: the gate reads the body live through the bridge.
   No `pull_request*`, `workflow_run` or `issue_comment` trigger: no outsider can start a run.
 - **Logs**: each script step prints one line (`ok <step> <ms>` or `RED <step> exit N`). The
   tail of a red step goes to the private pull request, not to this log.
 - **Artifacts**: none.
-- **Reports**: each workflow ends with `nikatru-collect`, which gathers the red detail and
-  seals it, and `nikatru-report`, which restores nothing and runs `.github/nikatru/report.py`:
+- **Reports**: each job seals its red detail before it caches it; each workflow ends with
+  `nikatru-collect`, which gathers the sealed detail unread, and `nikatru-report`, which
+  restores nothing and runs `.github/nikatru/report.py`:
   one commit status per lane and one for the gate, sent to the private repository through the
   bridge Worker. Both check out only this repository.
 - **Secrets**: `PRIVATE_DEPLOY_KEY` (read-only deploy key of the private repository),
   `BRIDGE_REPORT_SECRET` (signs the reports; held only by the report job) and
-  `NIKATRU_DETAIL_KEY` (seals the red detail between the two report jobs), plus what each
+  `NIKATRU_DETAIL_KEY` (seals each job's red detail at hand-off; held by the hand-off steps and the
+  report job's send),
+  `BRIDGE_READ_SECRET` (signs the live read of the pull request; held only by the gate's
+  body step and the recheck), plus what each
   workflow reads.
 
-## Workflows (8)
+## Workflows (9)
 
 - `ci.yml` — reports `ci-gate`
 - `codeql.yml` — reports `codeql`
@@ -29,4 +38,5 @@ verdict back to that repository. It is generated: a pull request here is not how
 - `extensions-ci.yml`
 - `lane-workers.yml`
 - `migrate-platform-db.yml`
+- `pr-recheck.yml`
 - `renovate.yml` — reports `renovate`
