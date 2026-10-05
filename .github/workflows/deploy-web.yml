@@ -302,7 +302,8 @@ jobs:
       - name: Hold the bundle to its byte budget
         if: steps.plan.outputs.deploy == 'true'
         working-directory: .
-        run: node tooling/web/perf-budget.mjs --measure apps/${{ matrix.app }}/build/web --app ${{ matrix.app }}
+        run: |
+          PERF_BUDGET_BASE="$(git rev-parse --verify HEAD^1)" node tooling/web/perf-budget.mjs --measure apps/${{ matrix.app }}/build/web --app ${{ matrix.app }}
       - name: Ensure the Pages project exists (Direct Upload, idempotent)
         if: steps.plan.outputs.deploy == 'true'
         working-directory: .
