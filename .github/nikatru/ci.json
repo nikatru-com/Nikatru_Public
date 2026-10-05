@@ -1,0 +1,162 @@
+{
+  "_generated": "by tooling/ci/gen-public-shell.mjs; read by report.py beside it. Do not edit.",
+  "bridgeUrl": "https://gh-bridge.nikatru.workers.dev/report",
+  "prefix": "nikatru-detail-",
+  "slots": 8,
+  "gate": {
+    "job": "ci-gate",
+    "context": "ci-gate",
+    "members": [
+      "ci.ci-gate."
+    ]
+  },
+  "lanes": [
+    {
+      "job": "lane-workers",
+      "context": "ci/lane-workers",
+      "members": [
+        "lane-workers."
+      ]
+    },
+    {
+      "job": "guard-meta",
+      "context": "ci/guard-meta",
+      "members": [
+        "ci.guard-meta."
+      ]
+    },
+    {
+      "job": "guard-tests",
+      "context": "ci/guard-tests",
+      "members": [
+        "ci.guard-tests."
+      ]
+    },
+    {
+      "job": "guard-tests-floor",
+      "context": "ci/guard-tests-floor",
+      "members": [
+        "ci.guard-tests-floor."
+      ]
+    },
+    {
+      "job": "guards-platform",
+      "context": "ci/guards-platform",
+      "members": [
+        "ci.guards-platform."
+      ]
+    },
+    {
+      "job": "guards-legal",
+      "context": "ci/guards-legal",
+      "members": [
+        "ci.guards-legal."
+      ]
+    },
+    {
+      "job": "guards-store",
+      "context": "ci/guards-store",
+      "members": [
+        "ci.guards-store."
+      ]
+    },
+    {
+      "job": "guards-chassis",
+      "context": "ci/guards-chassis",
+      "members": [
+        "ci.guards-chassis."
+      ]
+    },
+    {
+      "job": "security-scan",
+      "context": "ci/security-scan",
+      "members": [
+        "ci.security-scan."
+      ]
+    },
+    {
+      "job": "site-tokens",
+      "context": "ci/site-tokens",
+      "members": [
+        "ci.site-tokens."
+      ]
+    },
+    {
+      "job": "site-shared",
+      "context": "ci/site-shared",
+      "members": [
+        "ci.site-shared."
+      ]
+    },
+    {
+      "job": "content-gate",
+      "context": "ci/content-gate",
+      "members": [
+        "ci.content-gate."
+      ]
+    },
+    {
+      "job": "app-brick",
+      "context": "ci/app-brick",
+      "members": [
+        "ci.app-brick."
+      ]
+    },
+    {
+      "job": "sites",
+      "context": "ci/sites",
+      "members": [
+        "ci.sites."
+      ]
+    },
+    {
+      "job": "workspace-gate",
+      "context": "ci/workspace-gate",
+      "members": [
+        "ci.workspace-gate."
+      ]
+    },
+    {
+      "job": "prepare",
+      "context": "ci/prepare",
+      "members": [
+        "ci.prepare."
+      ]
+    },
+    {
+      "job": "app-dryrun",
+      "context": "ci/app-dryrun",
+      "members": [
+        "ci.app-dryrun."
+      ]
+    },
+    {
+      "job": "android-artifacts",
+      "context": "ci/android-artifacts",
+      "members": [
+        "ci.android-artifacts."
+      ]
+    },
+    {
+      "job": "web-artifacts",
+      "context": "ci/web-artifacts",
+      "members": [
+        "ci.web-artifacts."
+      ]
+    },
+    {
+      "job": "linux-artifacts",
+      "context": "ci/linux-artifacts",
+      "members": [
+        "ci.linux-artifacts."
+      ]
+    },
+    {
+      "job": "extensions",
+      "context": "ci/extensions",
+      "members": [
+        "extensions-ci."
+      ]
+    }
+  ]
+}

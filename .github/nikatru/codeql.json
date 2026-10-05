@@ -1,0 +1,22 @@
+{
+  "_generated": "by tooling/ci/gen-public-shell.mjs; read by report.py beside it. Do not edit.",
+  "bridgeUrl": "https://gh-bridge.nikatru.workers.dev/report",
+  "prefix": "nikatru-detail-",
+  "slots": 8,
+  "gate": {
+    "job": "analyze",
+    "context": "codeql",
+    "members": [
+      "codeql.analyze."
+    ]
+  },
+  "lanes": [
+    {
+      "job": "detect",
+      "context": "codeql/detect",
+      "members": [
+        "codeql.detect."
+      ]
+    }
+  ]
+}
