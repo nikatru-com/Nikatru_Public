@@ -84,8 +84,10 @@ jobs:
             git diff --name-status -M "$BASE_SHA...HEAD" | awk -F'\t' '{ if ($1 ~ /^[RC]/) print $3 "\t" $2; else print $2 "\t" }' > "$RUNNER_TEMP/files.tsv"
             wc -l < "$RUNNER_TEMP/files.tsv" | tr -d ' ' > "$RUNNER_TEMP/changed-files.txt"
           else
-            gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --jq '.[] | [.filename, (.previous_filename // "")] | @tsv' > "$RUNNER_TEMP/files.tsv"
-            gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.changed_files' > "$RUNNER_TEMP/changed-files.txt"
+            # The PR is the CODE repository's, never the run's own (gh-repoint-f2): one source, the register.
+            code_repo="$(node tooling/ops/repo-phase.mjs --get code)"
+            gh api --paginate "repos/$code_repo/pulls/$PR_NUMBER/files" --jq '.[] | [.filename, (.previous_filename // "")] | @tsv' > "$RUNNER_TEMP/files.tsv"
+            gh api "repos/$code_repo/pulls/$PR_NUMBER" --jq '.changed_files' > "$RUNNER_TEMP/changed-files.txt"
           fi
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi

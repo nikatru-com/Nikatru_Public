@@ -70,6 +70,7 @@ jobs:
           RENOVATE_ONBOARDING: 'false'
           RENOVATE_REQUIRE_CONFIG: 'required'
           RENOVATE_GIT_AUTHOR: 'nikatru-renovate <renovate@nikatru.com>'
+          RENOVATE_LOG_LEVEL: ${{ env.NIKATRU_PRIVATE_REPO && 'fatal' || 'info' }}
           LOG_LEVEL: ${{ env.NIKATRU_PRIVATE_REPO && 'fatal' || 'info' }}
           RENOVATE_LOG_FILE: ${{ env.NIKATRU_PRIVATE_REPO && '/tmp/nikatru-renovate.log' || '' }}
           RENOVATE_LOG_FILE_LEVEL: ${{ env.NIKATRU_PRIVATE_REPO && 'info' || '' }}
