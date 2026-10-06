@@ -9,6 +9,8 @@ name: E2E live
 run-name: "E2E live · ${{ github.event.client_payload.sha }}"
 
 on:
+  repository_dispatch:
+    types: [e2e]
   workflow_dispatch:
     inputs:
       auth_target:
@@ -167,7 +169,7 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Preflight — auth_target must be one of the declared options
         env:
-          TARGET: ${{ inputs.auth_target || 'production' }}
+          TARGET: ${{ (github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production' }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -182,7 +184,7 @@ jobs:
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.2 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Preflight — a rehearsal target may not run on the default branch
         env:
-          TARGET: ${{ inputs.auth_target || 'production' }}
+          TARGET: ${{ (github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production' }}
           REF_NAME: ${{ env.NIKATRU_REF_NAME }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -199,7 +201,7 @@ jobs:
       - name: Preflight — the chosen auth target's secrets must be present
         id: pre
         env:
-          TARGET: ${{ inputs.auth_target || 'production' }}
+          TARGET: ${{ (github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production' }}
           HOSTED_URL: ${{ secrets.SUPABASE_URL }}
           HOSTED_ANON: ${{ secrets.SUPABASE_ANON_KEY }}
           HOSTED_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -270,7 +272,7 @@ jobs:
       - uses: ./.github/actions/setup-node
       - name: Derive what this run expects (stack and Workers trust)
         env:
-          SUPABASE_URL: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
+          SUPABASE_URL: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -291,8 +293,8 @@ jobs:
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.9 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Sweep stale throwaway E2E users a failed run left behind
         env:
-          SUPABASE_URL: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
+          SUPABASE_URL: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
           E2E_APP_ID: ${{ matrix.app }}
@@ -318,8 +320,8 @@ jobs:
       - name: Provision throwaway confirmed user
         id: user
         env:
-          SUPABASE_URL: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
+          SUPABASE_URL: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
           E2E_SWEEP_APP: ${{ matrix.app }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -331,8 +333,8 @@ jobs:
       - name: Provision the throwaway user the delete leg destroys
         id: delete_user
         env:
-          SUPABASE_URL: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
+          SUPABASE_URL: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
           E2E_SWEEP_APP: ${{ matrix.app }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -343,8 +345,8 @@ jobs:
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.15 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Measure the target's captcha posture (ignores it, or enforces it)
         env:
-          SUPABASE_URL: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
-          SUPABASE_ANON_KEY: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_ANON_KEY || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_ANON_KEY || '' }}
+          SUPABASE_URL: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
+          SUPABASE_ANON_KEY: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_ANON_KEY || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_ANON_KEY || '' }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -372,8 +374,8 @@ jobs:
         id: drive
         working-directory: apps/${{ matrix.app }}
         env:
-          SUPABASE_URL: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
-          SUPABASE_ANON_KEY: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_ANON_KEY || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_ANON_KEY || '' }}
+          SUPABASE_URL: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
+          SUPABASE_ANON_KEY: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_ANON_KEY || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_ANON_KEY || '' }}
           TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
           E2E_EMAIL: ${{ steps.user.outputs.email }}
           E2E_PASSWORD: ${{ steps.user.outputs.password }}
@@ -544,9 +546,9 @@ jobs:
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The Workers trust exactly one issuer (positive, both targets)
         env:
-          SUPABASE_URL: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
-          SUPABASE_ANON_KEY: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_ANON_KEY || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_ANON_KEY || '' }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
+          SUPABASE_URL: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
+          SUPABASE_ANON_KEY: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_ANON_KEY || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_ANON_KEY || '' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
           E2E_EMAIL: ${{ steps.user.outputs.email }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -558,9 +560,9 @@ jobs:
       - name: Erase the delete-leg account headlessly (captcha-gated stack)
         if: env.E2E_EXPECT_CAPTCHA_GATE == 'yes'
         env:
-          SUPABASE_URL: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
-          SUPABASE_ANON_KEY: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_ANON_KEY || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_ANON_KEY || '' }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
+          SUPABASE_URL: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
+          SUPABASE_ANON_KEY: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_ANON_KEY || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_ANON_KEY || '' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
           E2E_DELETE_EMAIL: ${{ steps.delete_user.outputs.email }}
           E2E_DELETE_USER_ID: ${{ steps.delete_user.outputs.user_id }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -575,8 +577,8 @@ jobs:
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.25 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Verify the in-app deletion really purged (leg 6)
         env:
-          SUPABASE_URL: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
+          SUPABASE_URL: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
           E2E_DELETE_USER_ID: ${{ steps.delete_user.outputs.user_id }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
@@ -615,8 +617,8 @@ jobs:
       - name: Purge test data (always — keep prod pristine)
         if: always() && steps.user.outcome != 'skipped'
         env:
-          SUPABASE_URL: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
+          SUPABASE_URL: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
           E2E_USER_ID: ${{ steps.user.outputs.user_id }}
           E2E_APP_ID: ${{ matrix.app }}
           E2E_RESPONSE_DATA: apps/${{ matrix.app }}/build/integration_response_data.json
@@ -634,8 +636,8 @@ jobs:
       - name: Purge the delete-leg user too (already gone on a green run)
         if: always() && steps.delete_user.outcome != 'skipped'
         env:
-          SUPABASE_URL: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ (inputs.auth_target || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || (inputs.auth_target || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
+          SUPABASE_URL: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_SERVICE_ROLE_KEY || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
           E2E_USER_ID: ${{ steps.delete_user.outputs.user_id }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
@@ -773,6 +775,16 @@ jobs:
       - uses: ./.github/actions/setup-node
       - uses: ./.github/actions/setup-flutter
         if: env.PROOF_NEEDS_DEVICE == 'true'
+      - name: Git may write paths past MAX_PATH
+        if: env.PROOF_NEEDS_DEVICE == 'true' && (matrix.target == 'windows')
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          git config --global core.longpaths true
+          git config --global --get core.longpaths
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.4 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Linux build and session deps
         if: env.PROOF_NEEDS_DEVICE == 'true' && (matrix.target == 'linux')
         run: |
@@ -785,7 +797,7 @@ jobs:
             xvfb gnome-keyring dbus-x11 desktop-file-utils xdg-utils
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.4 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.5 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Enable the desktop target
         if: env.PROOF_NEEDS_DEVICE == 'true' && (matrix.target == 'macos' || matrix.target == 'windows' || matrix.target == 'linux')
         run: |
@@ -794,7 +806,7 @@ jobs:
           flutter config "--enable-${TARGET}-desktop"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.5 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.6 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: flutter pub get
         if: env.PROOF_NEEDS_DEVICE == 'true'
         working-directory: apps/${{ matrix.app }}
@@ -804,7 +816,7 @@ jobs:
           flutter pub get --enforce-lockfile
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.6 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.7 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Resolve this app's databases from its Worker's wrangler file
         id: backend
         run: |
@@ -813,7 +825,7 @@ jobs:
           node tooling/e2e/backend.mjs --app "$APP" --emit-output
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.7 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.8 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: The app's API base, from the composer's rule
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -821,7 +833,7 @@ jobs:
           node tooling/ci/flutter-release-build.mjs --emit-env API_BASE_URL "$APP" >> "$GITHUB_ENV"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.8 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.9 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Boot an emulator
         if: env.PROOF_NEEDS_DEVICE == 'true' && (matrix.target == 'android')
         env:
@@ -875,7 +887,7 @@ jobs:
           echo "emulator booted at ${SECONDS}s"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.9 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.10 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Boot an iPhone simulator
         if: env.PROOF_NEEDS_DEVICE == 'true' && (matrix.target == 'ios')
         run: |
@@ -888,7 +900,7 @@ jobs:
           echo "SIM_UDID=${udid}" >> "$GITHUB_ENV"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.10 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.11 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Provision throwaway confirmed user
         id: user
         env:
@@ -901,7 +913,7 @@ jobs:
           node tooling/e2e/provision_user.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.11 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.12 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: The native leg — first run, sign in, the list offline, sign out
         id: proof
         if: matrix.target != 'linux'
@@ -921,7 +933,7 @@ jobs:
           node tooling/e2e/native_auth_proof.mjs --app "$APP" --target "$TARGET" --device "${SIM_UDID:-$DEVICE}" --log "$E2E_PROOF_LOG" $CALLBACK --sign-in "$SIGN_IN" --pending-flows "$PENDING_FLOWS" $TAP
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.12 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.13 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: The native leg — the bundle under xvfb, one D-Bus session
         id: proof_linux
         if: matrix.target == 'linux'
@@ -947,7 +959,7 @@ jobs:
           '
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.13 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.14 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Purge the throwaway user
         if: always() && steps.user.outcome != 'skipped'
         env:
@@ -965,7 +977,7 @@ jobs:
           node tooling/e2e/purge.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.14 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.native.15 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
@@ -1209,3 +1221,191 @@ jobs:
           path: .nikatru-detail
           key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-e2e.alert.${{ strategy.job-index }}
           enableCrossOsArchive: true
+
+  nikatru-collect:
+    name: Collect the red detail, without the report secret (generated)
+    needs: [prepare, e2e]
+    if: always() && github.event_name == 'repository_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      detail: ${{ steps.collect.outputs.detail }}
+    steps:
+      - name: Check out this shell repository only, no private code (generated)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/nikatru
+      - name: List the red detail this run handed over (generated)
+        id: plan
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/nikatru/report.py plan .github/nikatru/e2e.json
+      - name: Restore hand-off 0 (generated)
+        if: steps.plan.outputs.key_0 != ''
+        continue-on-error: true
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .nikatru-detail
+          key: ${{ steps.plan.outputs.key_0 }}
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+      - name: File hand-off 0 (generated)
+        if: steps.plan.outputs.key_0 != ''
+        continue-on-error: true
+        env:
+          NIKATRU_KEY: ${{ steps.plan.outputs.key_0 }}
+        run: python3 .github/nikatru/report.py place "$NIKATRU_KEY"
+      - name: Restore hand-off 1 (generated)
+        if: steps.plan.outputs.key_1 != ''
+        continue-on-error: true
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .nikatru-detail
+          key: ${{ steps.plan.outputs.key_1 }}
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+      - name: File hand-off 1 (generated)
+        if: steps.plan.outputs.key_1 != ''
+        continue-on-error: true
+        env:
+          NIKATRU_KEY: ${{ steps.plan.outputs.key_1 }}
+        run: python3 .github/nikatru/report.py place "$NIKATRU_KEY"
+      - name: Restore hand-off 2 (generated)
+        if: steps.plan.outputs.key_2 != ''
+        continue-on-error: true
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .nikatru-detail
+          key: ${{ steps.plan.outputs.key_2 }}
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+      - name: File hand-off 2 (generated)
+        if: steps.plan.outputs.key_2 != ''
+        continue-on-error: true
+        env:
+          NIKATRU_KEY: ${{ steps.plan.outputs.key_2 }}
+        run: python3 .github/nikatru/report.py place "$NIKATRU_KEY"
+      - name: Restore hand-off 3 (generated)
+        if: steps.plan.outputs.key_3 != ''
+        continue-on-error: true
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .nikatru-detail
+          key: ${{ steps.plan.outputs.key_3 }}
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+      - name: File hand-off 3 (generated)
+        if: steps.plan.outputs.key_3 != ''
+        continue-on-error: true
+        env:
+          NIKATRU_KEY: ${{ steps.plan.outputs.key_3 }}
+        run: python3 .github/nikatru/report.py place "$NIKATRU_KEY"
+      - name: Restore hand-off 4 (generated)
+        if: steps.plan.outputs.key_4 != ''
+        continue-on-error: true
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .nikatru-detail
+          key: ${{ steps.plan.outputs.key_4 }}
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+      - name: File hand-off 4 (generated)
+        if: steps.plan.outputs.key_4 != ''
+        continue-on-error: true
+        env:
+          NIKATRU_KEY: ${{ steps.plan.outputs.key_4 }}
+        run: python3 .github/nikatru/report.py place "$NIKATRU_KEY"
+      - name: Restore hand-off 5 (generated)
+        if: steps.plan.outputs.key_5 != ''
+        continue-on-error: true
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .nikatru-detail
+          key: ${{ steps.plan.outputs.key_5 }}
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+      - name: File hand-off 5 (generated)
+        if: steps.plan.outputs.key_5 != ''
+        continue-on-error: true
+        env:
+          NIKATRU_KEY: ${{ steps.plan.outputs.key_5 }}
+        run: python3 .github/nikatru/report.py place "$NIKATRU_KEY"
+      - name: Restore hand-off 6 (generated)
+        if: steps.plan.outputs.key_6 != ''
+        continue-on-error: true
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .nikatru-detail
+          key: ${{ steps.plan.outputs.key_6 }}
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+      - name: File hand-off 6 (generated)
+        if: steps.plan.outputs.key_6 != ''
+        continue-on-error: true
+        env:
+          NIKATRU_KEY: ${{ steps.plan.outputs.key_6 }}
+        run: python3 .github/nikatru/report.py place "$NIKATRU_KEY"
+      - name: Restore hand-off 7 (generated)
+        if: steps.plan.outputs.key_7 != ''
+        continue-on-error: true
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .nikatru-detail
+          key: ${{ steps.plan.outputs.key_7 }}
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+      - name: File hand-off 7 (generated)
+        if: steps.plan.outputs.key_7 != ''
+        continue-on-error: true
+        env:
+          NIKATRU_KEY: ${{ steps.plan.outputs.key_7 }}
+        run: python3 .github/nikatru/report.py place "$NIKATRU_KEY"
+      - name: Carry the sealed detail to the report job (generated)
+        id: collect
+        if: always()
+        env:
+          NIKATRU_OVERFLOW: ${{ steps.plan.outputs.overflow }}
+        run: python3 .github/nikatru/report.py collect .github/nikatru/e2e.json
+
+  nikatru-report:
+    name: Report to the private repository (generated)
+    needs: [prepare, e2e, nikatru-collect]
+    if: always() && github.event_name == 'repository_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out this shell repository only, no private code (generated)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/nikatru
+      - name: Report every lane and the gate to the private repository (generated)
+        id: send
+        if: always()
+        env:
+          BRIDGE_REPORT_SECRET: ${{ secrets.BRIDGE_REPORT_SECRET }}
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_DETAIL: ${{ needs.nikatru-collect.outputs.detail }}
+          NIKATRU_HEAD_SHA: ${{ github.event.client_payload.sha }}
+          NIKATRU_P_EVENT: ${{ github.event.client_payload.event }}
+          NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_REF: ${{ github.event.client_payload.ref }}
+          NIKATRU_RESULTS: '{"prepare": "${{ needs.prepare.result }}", "e2e": "${{ needs.e2e.result }}"}'
+        run: /usr/bin/python3 -I .github/nikatru/report.py send .github/nikatru/e2e.json
+      - name: Report every lane and the gate without detail, as the step above did not run to its end (generated)
+        if: always() && steps.send.outputs.reported != 'true'
+        env:
+          BRIDGE_REPORT_SECRET: ${{ secrets.BRIDGE_REPORT_SECRET }}
+          NIKATRU_HEAD_SHA: ${{ github.event.client_payload.sha }}
+          NIKATRU_P_EVENT: ${{ github.event.client_payload.event }}
+          NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_REF: ${{ github.event.client_payload.ref }}
+          NIKATRU_RESULTS: '{"prepare": "${{ needs.prepare.result }}", "e2e": "${{ needs.e2e.result }}"}'
+        run: /usr/bin/python3 -I .github/nikatru/report.py send .github/nikatru/e2e.json

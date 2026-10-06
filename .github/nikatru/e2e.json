@@ -5,19 +5,20 @@
   "prefix": "nikatru-detail-",
   "slots": 8,
   "gate": {
-    "job": "analyze",
-    "context": "codeql",
+    "job": "e2e",
+    "context": "e2e",
     "members": [
-      "codeql.analyze."
+      "e2e.e2e."
     ]
   },
   "lanes": [
     {
-      "job": "detect",
-      "context": "codeql/detect",
+      "job": "prepare",
+      "context": "e2e/prepare",
       "members": [
-        "codeql.detect."
+        "e2e.prepare."
       ]
     }
-  ]
+  ],
+  "leadDispatch": true
 }

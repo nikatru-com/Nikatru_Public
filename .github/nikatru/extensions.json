@@ -1,0 +1,72 @@
+{
+  "_generated": "by tooling/ci/gen-public-shell.mjs; read by report.py beside it. Do not edit.",
+  "bridgeUrl": "https://gh-bridge.nikatru.workers.dev/report",
+  "postTimeoutS": 30,
+  "prefix": "nikatru-detail-",
+  "slots": 8,
+  "gate": {
+    "job": "extensions-lane-accounting",
+    "context": "extensions",
+    "members": [
+      "extensions.extensions-lane-accounting."
+    ]
+  },
+  "lanes": [
+    {
+      "job": "ci",
+      "context": "extensions/ci",
+      "members": [
+        "extensions-ci."
+      ]
+    },
+    {
+      "job": "e2e-suite",
+      "context": "extensions/e2e-suite",
+      "members": [
+        "extensions.e2e-suite."
+      ]
+    },
+    {
+      "job": "e2e-branded",
+      "context": "extensions/e2e-branded",
+      "members": [
+        "extensions.e2e-branded."
+      ]
+    },
+    {
+      "job": "release",
+      "context": "extensions/release",
+      "members": [
+        "extensions.release."
+      ]
+    },
+    {
+      "job": "attest",
+      "context": "extensions/attest",
+      "members": [
+        "extensions.attest."
+      ]
+    },
+    {
+      "job": "store-publish",
+      "context": "extensions/store-publish",
+      "members": [
+        "extensions.store-publish."
+      ]
+    },
+    {
+      "job": "cws-token-keepalive",
+      "context": "extensions/cws-token-keepalive",
+      "members": [
+        "extensions.cws-token-keepalive."
+      ]
+    },
+    {
+      "job": "store-key-keepalive",
+      "context": "extensions/store-key-keepalive",
+      "members": [
+        "extensions.store-key-keepalive."
+      ]
+    }
+  ]
+}

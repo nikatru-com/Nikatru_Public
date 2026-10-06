@@ -1,6 +1,7 @@
 {
   "_generated": "by tooling/ci/gen-public-shell.mjs; read by report.py beside it. Do not edit.",
   "bridgeUrl": "https://gh-bridge.nikatru.workers.dev/report",
+  "postTimeoutS": 30,
   "prefix": "nikatru-detail-",
   "slots": 8,
   "gate": {

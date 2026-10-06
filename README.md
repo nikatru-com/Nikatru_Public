@@ -7,12 +7,21 @@ verdict back to that repository. It is generated: a pull request here is not how
 
 - **Triggers**: `repository_dispatch` (types `ci` and `main`, sent by the bridge Worker for a
   pull request or a push in the private repository), plus `workflow_dispatch` and `schedule`.
+  `e2e.yml` also runs on `e2e`, against the head of a private pull request (sent by the bridge on a `run-e2e` label of the pull request, or the maintainer).
   `pr-recheck.yml` runs on the bridge's `nikatru-pr-recheck` (a pull request body or base
   edit, or a draft conversion) and re-runs only the gate job of the ONE run named by the newest
   gate status on the pull request's current head (read live through the bridge); nothing when the
   head moved, and exit 1 when that run cannot be identified.
   No dispatch carries pull request text: the gate reads the body live through the bridge.
-  No `pull_request*`, `workflow_run` or `issue_comment` trigger: no outsider can start a run.
+  No `pull_request*` or `issue_comment` trigger. A `workflow_run` chain names only this
+  repository's own workflows, but GitHub matches a name against any workflow that runs here, a
+  fork pull request's added one included; so every job of a chain refuses, in its `if:`, a run
+  that woke it from a fork or a pull request.
+- **Barrier**: a fork pull request's run waits for a maintainer's approval (`approval_policy: all_external_contributors`,
+  read live by `tooling/ci/assert-shell-barriers.mjs` in the private repository). It is what keeps
+  an outsider's workflow from running at all: from waking a chain, and from restoring the
+  `actions/cache` hand-offs between the jobs of one run (signed store bundles, debug symbols, the
+  extensions release directory), which a fork pull request's run could otherwise read.
 - **Logs**: each script step prints one line (`ok <step> <ms>` or `RED <step> exit N`). The
   tail of a red step goes to the private pull request, not to this log.
 - **Artifacts**: none.
@@ -29,17 +38,48 @@ verdict back to that repository. It is generated: a pull request here is not how
   body step and the recheck), plus what each
   workflow reads.
 
-## Workflows (12)
+## Workflows (34)
 
+- `apple-expiry-write.yml`
+- `autopilot-watch.yml` — held
 - `build-platforms.yml` — reports `all-platforms`
 - `ci.yml` — reports `ci-gate`
 - `codeql.yml` — reports `codeql`
+- `deploy-sandbox.yml`
 - `deploy-web.yml`
 - `deploy-workers.yml`
 - `e2e.yml` — reports `e2e`
 - `extensions-ci.yml`
+- `extensions.yml` — reports `extensions`
 - `lane-workers.yml`
+- `main-healthy.yml` — held
 - `migrate-platform-db.yml`
+- `migrate-secrets.yml`
+- `mutation-proofs.yml`
+- `name-clearance.yml`
+- `native-auth-proof.yml`
 - `ops-watch.yml` — reports `ops-watch`
 - `pr-recheck.yml`
+- `redeploy-stranded.yml` — held
+- `regen-gradle-verify.yml`
+- `rehearse-app2.yml`
 - `renovate.yml` — reports `renovate`
+- `rollback.yml`
+- `store-screenshots.yml`
+- `submit-appstore.yml`
+- `submit-play.yml`
+- `submit-snap.yml`
+- `submit-windows-store.yml`
+- `symbolication-proof.yml`
+- `time-travel.yml`
+- `trufflehog.yml`
+- `update-goldens.yml`
+
+## Held
+
+These run only when a person dispatches them: their schedule and chain runs are skipped, not red,
+until what each waits on is in place.
+
+- `autopilot-watch.yml` — until the shell holds a credential that reads the private repository's pull requests and files its ledger issue there (PLAN design item 2)
+- `main-healthy.yml` — until the shell can post a status on the private repository's commit: a credential that writes there, and the shell-run-to-private-commit mapping (GitHub migration P7)
+- `redeploy-stranded.yml` — until the shell holds a credential that reads the private repository's main and its ci-gate (PLAN design item 2)

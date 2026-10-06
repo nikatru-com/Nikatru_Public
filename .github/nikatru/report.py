@@ -101,6 +101,22 @@
 # reached the Worker), and every report of R1 and R2 was the 403 — no status from the shell.
 # post() sends USER_AGENT; the test bridge refuses the default agent exactly as the edge does.
 #
+# ⏱ 2026-10-06 (ops-followups-1006): A TRANSIENT ANSWER IS RETRIED. Shell run 37430771854
+# attempt 2 went red on ONE `ci/lane-workers success -> HTTP 502 (GitHub call failed)` while
+# 22 other posts of the same job returned 200. post() retries a 502/503/504 and a post that got
+# no answer at all, RETRY_DELAYS seconds apart (2, then 6), then reports the last answer as
+# before. Repeating a report is safe: the bridge's POST /report sets a commit status (the
+# newest of a context wins) and edits, never duplicates, its marked comment, and the bridge
+# itself re-reads by that marker before it re-creates one. Nothing else is retried: a 4xx is
+# the bridge's verdict on the report, and a retry cannot change it.
+#
+# ⏱ 2026-10-06 (followups-r3, PR #16 review finding 2): ONE LAYER'S TIME, NOT TWO STACKED. Each post
+# waits the config's `postTimeoutS` (gen-public-shell.mjs REPORT_POST_TIMEOUT_S: the bridge's
+# REPORT_BUDGET_MS plus a margin, one source), so a post never gives up on — and re-posts beside —
+# a /report that is still running. And a bridge 502 is retried only when its `upstream` (GitHub's
+# own answer behind it) is transient too, or absent (the edge's 502): a GitHub 4xx behind a 502 is
+# not cured by asking again.
+#
 # Exit 0 every report accepted (handoff: sealed, or nothing to hand over; collect: the
 # bundle written) · 1 a report refused or not delivered (a verdict that did not land
 # must not look green) · 2 COVERAGE LOST: no config, no bridge URL, no secret, no sha —
@@ -115,6 +131,7 @@ import os
 import re
 import shutil
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -142,6 +159,10 @@ DETAIL_DIR = '.nikatru-detail'
 # The agent every POST to the bridge names (B1): never urllib's default, which the edge bans.
 USER_AGENT = 'nikatru-shell-report/1'
 COLLECTED_DIR = '.nikatru-collected'
+# The answers a retry may cure (a gateway's; 0 is no answer at all), and the waits, in seconds,
+# before the second and third attempts.
+RETRY_STATUSES = (0, 502, 503, 504)
+RETRY_DELAYS = (2, 6)
 
 
 class Lost(Exception):
@@ -158,9 +179,11 @@ def load_config(path):
             cfg = json.load(f)
     except (OSError, ValueError) as e:
         raise Lost(f'{path} is unreadable: {e}')
-    for k in ('prefix', 'slots', 'gate', 'lanes'):
+    for k in ('prefix', 'slots', 'gate', 'lanes', 'postTimeoutS'):
         if k not in cfg:
             raise Lost(f'{path} has no `{k}`')
+    if not isinstance(cfg['postTimeoutS'], (int, float)) or isinstance(cfg['postTimeoutS'], bool) or cfg['postTimeoutS'] <= 0:
+        raise Lost(f'{path}: postTimeoutS {cfg["postTimeoutS"]!r} is not a positive number of seconds')
     for c in [cfg['gate']] + list(cfg['lanes']):
         if not CONTEXT.match(c.get('context', '')):
             raise Lost(f'{path}: {c.get("context")!r} is not a status context the bridge accepts')
@@ -386,24 +409,41 @@ def build(context, state, env, detail):
     return body
 
 
-def post(url, secret, body, opener=urllib.request.urlopen):
+def post(url, secret, body, timeout, opener=urllib.request.urlopen, sleep=time.sleep):
+    """(status, why) of the report: a transient answer retried, RETRY_DELAYS apart, then the last.
+    `timeout` is the config's postTimeoutS: above the bridge's whole budget for one report."""
     raw = json.dumps(body, ensure_ascii=False).encode('utf-8')
+    for attempt in range(len(RETRY_DELAYS) + 1):
+        status, why, upstream = post_once(url, secret, raw, opener, timeout)
+        transient = status in RETRY_STATUSES and (status != 502 or upstream is None or upstream in RETRY_STATUSES)
+        if not transient or attempt == len(RETRY_DELAYS):
+            return status, why
+        print(f'-- HTTP {status} is transient; retrying in {RETRY_DELAYS[attempt]} s', file=sys.stderr)
+        sleep(RETRY_DELAYS[attempt])
+
+
+def post_once(url, secret, raw, opener, timeout):
+    """(status, why, upstream): `upstream` is the GitHub status a bridge 502 names, or None."""
     req = urllib.request.Request(url, data=raw, method='POST', headers={
         'content-type': 'application/json',
         'user-agent': USER_AGENT,
         'x-bridge-signature': signature(secret, raw),
     })
     try:
-        with opener(req, timeout=30) as r:
-            return r.status, ''
+        with opener(req, timeout=timeout) as r:
+            return r.status, '', None
     except urllib.error.HTTPError as e:
+        why, upstream = '', None
         try:
-            why = str(json.loads(e.read().decode('utf-8')).get('error', ''))[:200]
+            answer = json.loads(e.read().decode('utf-8'))
+            why = str(answer.get('error', ''))[:200]
+            got = answer.get('upstream')
+            upstream = got if isinstance(got, int) and not isinstance(got, bool) else None
         except (ValueError, AttributeError):
-            why = ''
-        return e.code, why
+            pass
+        return e.code, why, upstream
     except (urllib.error.URLError, OSError) as e:
-        return 0, str(e)[:200]
+        return 0, str(e)[:200], None
 
 
 def collect(env, cfg):
@@ -482,12 +522,16 @@ def read_bundle(raw, env, cfg):
     return out
 
 
-def gate_origin_ok(env):
-    """True when this run may report the gate: a pull request with a number, or a push to main or of a tag."""
+def gate_origin_ok(env, cfg=None):
+    """True when this run may report the gate: a pull request with a number, or a push to main or of a tag.
+    A workflow the generator marks `leadDispatch` (2026-10-06, bridge-train-1006: e2e.yml against a PR head)
+    may also report it for a `workflow_dispatch`-origin dispatch of a branch: the PR head it was sent for."""
     event = env.get('NIKATRU_P_EVENT', '')
     ref = env.get('NIKATRU_P_REF', '')
     if event == 'pull_request':
         return re.fullmatch(r'[1-9][0-9]{0,9}', env.get('NIKATRU_P_PR', '')) is not None
+    if event == 'workflow_dispatch' and (cfg or {}).get('leadDispatch') is True:
+        return ref.startswith('refs/heads/')
     return event == 'push' and (ref == 'refs/heads/main' or ref.startswith('refs/tags/'))
 
 
@@ -511,12 +555,12 @@ def send(env, cfg, opener=urllib.request.urlopen):
         if state is None:
             print(f"-- {item['context']}: {results.get(item['job'], 'absent')}, not reported")
             continue
-        if item is cfg['gate'] and not gate_origin_ok(env):
+        if item is cfg['gate'] and not gate_origin_ok(env, cfg):
             failed += 1
-            print(f"x  {item['context']}: NOT reported — this run is not a pull request, main or a tag run "
+            print(f"x  {item['context']}: NOT reported — this run is not a pull request, main or a tag run (nor a lead dispatch its config allows) "
                   f"(event {env.get('NIKATRU_P_EVENT', '')!r}, ref {env.get('NIKATRU_P_REF', '')!r}); only such a run may write the gate")
             continue
-        status, why = post(url, secret, build(item['context'], state, env, details.get(item['context'], '')), opener)
+        status, why = post(url, secret, build(item['context'], state, env, details.get(item['context'], '')), cfg['postTimeoutS'], opener)
         ok = 200 <= status < 300
         failed += 0 if ok else 1
         print(f"{'ok' if ok else 'x '} {item['context']} {state} -> HTTP {status}{f' ({why})' if why and not ok else ''}")

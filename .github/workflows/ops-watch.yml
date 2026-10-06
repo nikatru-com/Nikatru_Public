@@ -37,6 +37,7 @@ on:
   schedule:
     - cron: '30 7 * * *'
     - cron: '45 7 * * 1'
+    - cron: '45 7 * * 4'
     - cron: '50 8 * * *'
     - cron: '30 19 * * *'
     - cron: '30 0 * * *'
@@ -1361,7 +1362,7 @@ jobs:
 
   renovate-backlog:
     name: The Renovate queue drains at least as fast as it fills
-    if: github.event.schedule == '45 7 * * 1' || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.renovate_backlog)
+    if: github.event.schedule == '45 7 * * 1' || github.event.schedule == '45 7 * * 4' || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.renovate_backlog)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -1449,7 +1450,7 @@ jobs:
 
   code-scanning-age:
     name: No high or critical code-scanning alert stands untriaged past its window
-    if: github.event.schedule == '45 7 * * 1' || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.code_scanning_age)
+    if: github.event.schedule == '45 7 * * 1' || github.event.schedule == '45 7 * * 4' || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.code_scanning_age)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -1550,7 +1551,7 @@ jobs:
 
   tech-currency:
     name: What the pipeline runs on is not being retired by its vendors
-    if: github.event.schedule == '45 7 * * 1' || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.tech_currency)
+    if: github.event.schedule == '45 7 * * 1' || github.event.schedule == '45 7 * * 4' || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.tech_currency)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
