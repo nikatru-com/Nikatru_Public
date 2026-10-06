@@ -410,6 +410,11 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node tooling/ops/edge-ratelimit-rule.mjs --apply
+      - name: Apply the www -> apex redirect rule, then the www DNS record (tooling/edge/zone.json)
+        if: steps.plan.outputs.deploy == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node tooling/ops/www-redirect-rule.mjs --apply
       - name: Record the deployed SHA
         if: always() && steps.deploy.outcome == 'success'
         env:

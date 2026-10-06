@@ -1138,6 +1138,26 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.edge-shield.4 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: www.nikatru.com is the declared 301 to the apex
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_READ_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          set +e
+          node tooling/ops/www-redirect-rule.mjs
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            echo "::error title=The www redirect is UNKNOWN::The nikatru.com redirect phase or the www record could not be read, or the www probe never answered, so nothing is known about www.nikatru.com from this run, and that is never a pass. The step log names the reason."
+          elif [ "$code" -eq 1 ]; then
+            echo "::error title=www.nikatru.com is not the declared 301 to the apex::The Single Redirect rule is missing or changed, the www record is not the declared one, or GET https://www.nikatru.com/x?y=1 does not answer 301 to https://nikatru.com/x?y=1 (the step log names each). Redeploy edge-shield from main to restore it, or change tooling/edge/zone.json in a PR if the live state is right."
+          fi
+          exit "$code"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.edge-shield.5 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The edge zone is the one tooling/edge/zone.json declares
         if: always()
         env:
@@ -1158,7 +1178,7 @@ jobs:
           exit "$code"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.edge-shield.5 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.edge-shield.6 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Clients get the JWKS as a 5xx on at most 1% of reads a day
         if: always()
         env:
@@ -1178,7 +1198,7 @@ jobs:
           exit "$code"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.edge-shield.6 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.edge-shield.7 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
