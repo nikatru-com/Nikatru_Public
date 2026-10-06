@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       failure_ledger:
-        description: 'Also run the weekly failed-run ledger (about 410 API requests cold, ceiling 450; off for post-merge dispatches)'
+        description: 'Also run the weekly failed-run ledger (about 430 API requests cold, ceiling 600; off for post-merge dispatches)'
         type: boolean
         default: false
       renovate_backlog:
@@ -1273,22 +1273,24 @@ jobs:
             echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
-      - name: The ISO week the log cache is keyed by
+      - name: The ISO week the log cache is keyed by, and the week before it
         id: week
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
           echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+          echo "prev=$(date -u -d '7 days ago' +%G-W%V)" >> "$GITHUB_OUTPUT"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.failure-ledger.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Restore this ISO week's ledger cache
+      - name: Restore this ISO week's ledger cache, else the previous week's
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .cache/triage
           key: failure-ledger-${{ steps.week.outputs.week }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             failure-ledger-${{ steps.week.outputs.week }}-
+            failure-ledger-${{ steps.week.outputs.prev }}-
       - name: Every failed run of the last eight days, and the recorded cause it maps to
         id: ledger
         env:
@@ -1298,8 +1300,9 @@ jobs:
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
           since="$(date -u -d '8 days ago' +%Y-%m-%dT%H:%M:%SZ)"
+          if [ -d .cache/triage ]; then find .cache/triage -type f -mtime +8 -delete; fi
           set +e
-          node tooling/ops/triage-failed-runs.mjs --since "$since" --no-prs --branch main --cache-dir .cache/triage --max-requests 450 > "${RUNNER_TEMP}/ledger.txt" 2>&1
+          node tooling/ops/triage-failed-runs.mjs --since "$since" --no-prs --branch main --cache-dir .cache/triage --max-requests 600 > "${RUNNER_TEMP}/ledger.txt" 2>&1
           code=$?
           set -e
           cat "${RUNNER_TEMP}/ledger.txt"

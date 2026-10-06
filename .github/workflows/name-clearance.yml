@@ -88,7 +88,6 @@ jobs:
       - name: Propose the records by pull request, armed to merge only when no verdict flipped
         env:
           SWEEP_EXIT: ${{ steps.sweep.outputs.exit }}
-          GH_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
           PUSH_TOKEN: ${{ github.token }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -140,14 +139,15 @@ jobs:
           echo "The sweep rewrote:"
           cat "$OUT/changed-paths.txt"
 
-          # ── 🔴 THE SECRET IS CHECKED WHERE IT IS NEEDED, AND ITS ABSENCE IS RED ──
+          # ── 🔴 NO TOKEN TO OPEN THE PROPOSAL WITH, AND THAT IS RED ──
+          # Post-cutover this is the path every run with a change takes (see GH_TOKEN above).
           if [ -z "${GH_TOKEN:-}" ]; then
             git diff --cached > "$OUT/name-clearance.diff"
-            echo 'RENOVATE_TOKEN was not set, so no pull request was opened. name-clearance.diff is the rewrite.' > "$OUT/NO-TOKEN.txt"
+            echo 'No pull request was opened: this run is in the public shell, which holds no PAT and is not where the records live. name-clearance.diff is the rewrite; open the refresh PR on the private repository.' > "$OUT/NO-TOKEN.txt"
             echo '--- THE REWRITTEN RECORDS, IN FULL ---'
             cat "$OUT/name-clearance.diff"
             echo '--- END OF THE REWRITTEN RECORDS ---'
-            echo "::error title=The records were re-derived but no pull request could be opened::The repository secret RENOVATE_TOKEN is not set, and it is what this workflow opens and auto-merges the refresh with. THE RECORDS ARE NOT LOST - they are printed above and uploaded as this run's name-clearance artifact. REMEDY (owner work): create RENOVATE_TOKEN, a classic PAT with repo scope, at Settings -> Secrets and variables -> Actions."
+            echo "::error title=The records were re-derived but no pull request could be opened::Since the cutover this workflow runs in the PUBLIC shell, which holds no PAT (owner lock 2026-10-06) and is generated, so a pull request opened here would be on the wrong repository: the records live in the private code repository. THE RECORDS ARE NOT LOST - they are printed above in full. REMEDY: apply the printed rewrite on a branch of the private repository and open the refresh PR there (a person today; the gh-bridge, through a signed door with its own token, after the follow-up due 2026-10-20). Do NOT add a RENOVATE_TOKEN binding: assert-public-shell.mjs limb P refuses it."
             exit 1
           fi
 
@@ -211,8 +211,8 @@ jobs:
               CAUSE='the repository setting "Allow GitHub Actions to create and approve pull requests" is OFF, so even a PAT-authenticated gh inside Actions is refused.'
               REMEDY='REMEDY (owner work): Settings -> Actions -> General -> Workflow permissions -> tick "Allow GitHub Actions to create and approve pull requests". API equivalent: gh api -X PUT "repos/'"${GITHUB_REPOSITORY}"'/actions/permissions/workflow" -F can_approve_pull_request_reviews=true'
             elif grep -qiE 'HTTP 40[13]|Bad credentials|Resource not accessible' "$OUT/gh-pr-create.log"; then
-              CAUSE='RENOVATE_TOKEN was rejected - expired, revoked, or no longer carrying repo scope.'
-              REMEDY='REMEDY (owner work): reissue the classic PAT with repo scope and update the RENOVATE_TOKEN repository secret. .github/workflows/renovate.yml uses the same secret and will be failing too.'
+              CAUSE='GH_TOKEN was rejected - expired, revoked, or not carrying repo scope.'
+              REMEDY='REMEDY: since the cutover this step holds no token (see GH_TOKEN above); open the refresh PR on the private repository.'
             else
               CAUSE="gh pr create exited ${PR_RC} for a reason this step does not recognise."
               REMEDY='REMEDY: read the gh output above.'

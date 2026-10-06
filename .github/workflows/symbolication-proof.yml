@@ -29,6 +29,7 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: read
+      checks: read
       actions: read
     outputs:
       app: ${{ steps.app.outputs.app }}

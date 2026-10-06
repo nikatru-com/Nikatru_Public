@@ -71,6 +71,7 @@ jobs:
           }
           prefix="${GITHUB_SERVER_URL:-https://github.com}/$GITHUB_REPOSITORY/actions/runs/"
           deadline=$(( $(date +%s) + NIKATRU_WAIT_S ))
+          pinned=""
           while :; do
             read_live
             still_ours
@@ -88,6 +89,8 @@ jobs:
             esac
             id="${rest%%/*}"
             [[ "$id" =~ ^[1-9][0-9]{0,19}$ ]] || unknown "the $NIKATRU_GATE_JOB status names no run id"
+            # (e) named a newer run of this PR's head whose gate may hold the old body's verdict: act on it.
+            if [ -n "$pinned" ] && [ "$pinned" -gt "$id" ]; then id="$pinned"; fi
             view=$(gh run view "$id" --repo "$GITHUB_REPOSITORY" --json status,jobs) || unknown "run $id could not be read"
             gate=$(jq -r --arg n "$NIKATRU_GATE_JOB" 'try ([.jobs[] | select(.name == $n)] as $g | if ($g | length) == 1 then "\(.status) \($g[0].databaseId) \($g[0].status)" else "" end) catch ""' <<<"$view")
             [ -n "$gate" ] || unknown "run $id has no single $NIKATRU_GATE_JOB job"
@@ -101,17 +104,29 @@ jobs:
             if [ "$run_status" = completed ] && [ "$job_status" = completed ]; then
               read_live
               still_ours
-              # (e) r4 item 2: another ci.yml run of this head that has not completed reads the body live, and
-              # re-running the older run would cancel it through the root's per-PR concurrency group.
+              # (e) a NEWER ci.yml run of this PR's head that has not completed: re-running run $id would
+              # cancel it through the root's per-PR group. The newest such run is read, never trusted from the list.
+              other=""
               for st in queued in_progress waiting pending requested; do
                 runs=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$NIKATRU_ROOT" --status "$st" --limit 100 --json databaseId,displayTitle,status) || unknown "the $NIKATRU_ROOT runs that are $st could not be listed"
-                other=$(jq -r --arg t "$NIKATRU_RUN_NAME · $NIKATRU_P_HEAD_SHA" --arg id "$id" 'try ([.[] | select(.displayTitle == $t and .status != "completed" and (.databaseId | tostring) != $id) | .databaseId | tostring][0] // "") catch "?"' <<<"$runs")
-                [ "$other" != "?" ] || unknown "the $NIKATRU_ROOT runs that are $st are not a run list"
-                if [ -n "$other" ]; then
-                  echo "run $other of $NIKATRU_P_HEAD_SHA is $st: it reads the body live, and re-running run $id would cancel it through the per-PR group; nothing re-run"
-                  exit 0
-                fi
+                found=$(jq -r --arg t "$NIKATRU_RUN_NAME · $NIKATRU_P_HEAD_SHA (PR #$NIKATRU_P_PR)" --arg id "$id" 'try ([.[] | select(.displayTitle == $t and .status != "completed" and (.databaseId | type) == "number" and .databaseId > ($id | tonumber)) | .databaseId] | max // "" | tostring) catch "?"' <<<"$runs")
+                [ "$found" != "?" ] || unknown "the $NIKATRU_ROOT runs that are $st are not a run list"
+                if [ -n "$found" ] && { [ -z "$other" ] || [ "$found" -gt "$other" ]; }; then other="$found"; fi
               done
+              if [ -n "$other" ]; then
+                oview=$(gh run view "$other" --repo "$GITHUB_REPOSITORY" --json status,jobs) || unknown "run $other could not be read"
+                ogate=$(jq -r --arg n "$NIKATRU_GATE_JOB" 'try ([.jobs[] | select(.name == $n)] as $g | if ($g | length) == 0 then "absent" elif ($g | length) == 1 and ($g[0].status | type) == "string" then $g[0].status else "" end) catch ""' <<<"$oview")
+                [ -n "$ogate" ] || unknown "run $other has more than one $NIKATRU_GATE_JOB job, or is not a run"
+                case "$ogate" in
+                  absent | queued | waiting | pending | requested)
+                    echo "run $other of $NIKATRU_P_HEAD_SHA (PR #$NIKATRU_P_PR) is newer and its $NIKATRU_GATE_JOB has not read the body yet ($ogate): it reads it live, and re-running run $id would cancel it through the per-PR group; nothing re-run"
+                    exit 0
+                    ;;
+                esac
+                echo "run $other of $NIKATRU_P_HEAD_SHA (PR #$NIKATRU_P_PR) is newer and its $NIKATRU_GATE_JOB is $ogate: it may hold the old body's verdict; acting on run $other, not run $id"
+                pinned="$other"
+                continue
+              fi
               gh run rerun "$id" --job "$job_id" --repo "$GITHUB_REPOSITORY"
               echo "re-ran $NIKATRU_GATE_JOB of run $id for $NIKATRU_P_HEAD_SHA: it reads the body as it is now"
               exit 0

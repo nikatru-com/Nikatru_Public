@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   renovate:
-    name: Renovate the public platform repository
+    name: Renovate the private code repository
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -64,16 +64,31 @@ jobs:
             echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
             echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
+      - name: Mint Renovate's one-hour token at the bridge
+        id: renovate-token
+        shell: bash
+        env:
+          BRIDGE_RENOVATE_SECRET: ${{ secrets.BRIDGE_RENOVATE_SECRET }}
+          NIKATRU_BRIDGE_RENOVATE_URL: https://gh-bridge.nikatru.workers.dev/renovate-token
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          node tooling/ops/renovate-token.mjs
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name renovate.renovate.1 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Run Renovate
         id: renovate
-        uses: renovatebot/github-action@39b914146caeff8cd512e61c8992f1d5913af85c
+        uses: renovatebot/github-action@230ce922b08968d0a4f6f70f295601daff09ef1d
         with:
-          token: ${{ secrets.RENOVATE_TOKEN }}
+          token: ${{ steps.renovate-token.outputs.token }}
         env:
-          RENOVATE_REPOSITORIES: ${{ env.NIKATRU_PRIVATE_REPO || github.repository }}
+          RENOVATE_REPOSITORIES: ${{ env.NIKATRU_PRIVATE_REPO }}
+          RENOVATE_AUTODISCOVER: 'false'
           RENOVATE_ONBOARDING: 'false'
           RENOVATE_REQUIRE_CONFIG: 'required'
           RENOVATE_GIT_AUTHOR: 'nikatru-renovate <renovate@nikatru.com>'
+          RENOVATE_PLATFORM_COMMIT: 'disabled'
           RENOVATE_LOG_LEVEL: ${{ env.NIKATRU_PRIVATE_REPO && 'fatal' || 'info' }}
           LOG_LEVEL: ${{ env.NIKATRU_PRIVATE_REPO && 'fatal' || 'info' }}
           RENOVATE_LOG_FILE: ${{ env.NIKATRU_PRIVATE_REPO && '/tmp/nikatru-renovate.log' || '' }}
@@ -90,7 +105,7 @@ jobs:
           test "$RENOVATE_OUTCOME" = success
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name renovate.renovate.2 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name renovate.renovate.3 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
