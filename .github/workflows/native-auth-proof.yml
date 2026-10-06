@@ -470,6 +470,17 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.ios.9 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Store native-auth-proof-ios-after-open in the bridge's private home (generated)
+        if: always() && steps.proof.outcome != 'skipped'
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: ${{ runner.temp }}/nk-proof-ios-after-open.png
+          NIKATRU_ARTIFACT_NAME: native-auth-proof-ios-after-open
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
       - name: Purge the throwaway user
         if: always() && steps.user.outcome != 'skipped'
         env:
@@ -1283,6 +1294,17 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.ios-oauth-return.7 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Store native-oauth-return-ios-after-open in the bridge's private home (generated)
+        if: always()
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: ${{ runner.temp }}/nk-proof-ios-after-open.png
+          NIKATRU_ARTIFACT_NAME: native-oauth-return-ios-after-open
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
       - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()

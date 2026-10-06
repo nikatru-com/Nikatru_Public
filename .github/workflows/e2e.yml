@@ -614,6 +614,17 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.28 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Store e2e-screenshots-${{ matrix.app }} in the bridge's private home (generated)
+        if: always() && steps.user.outcome != 'skipped'
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: apps/${{ matrix.app }}/screenshots/
+          NIKATRU_ARTIFACT_NAME: e2e-screenshots-${{ matrix.app }}
+          NIKATRU_IF_NO_FILES: warn
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
       - name: Purge test data (always — keep prod pristine)
         if: always() && steps.user.outcome != 'skipped'
         env:

@@ -24,7 +24,9 @@ verdict back to that repository. It is generated: a pull request here is not how
   extensions release directory), which a fork pull request's run could otherwise read.
 - **Logs**: each script step prints one line (`ok <step> <ms>` or `RED <step> exit N`). The
   tail of a red step goes to the private pull request, not to this log.
-- **Artifacts**: none.
+- **Artifacts**: none here. An artifact meant for a person (a public one is downloadable by anyone
+  signed in) goes to the bridge's private store instead (`POST /artifact`, a live run's declaring
+  job only), and is listed with expiring links on the private pull request or artifact issue.
 - **Reports**: each job seals its red detail before it caches it; each workflow ends with
   `nikatru-collect`, which gathers the sealed detail unread, and `nikatru-report`, which
   restores nothing and runs `.github/nikatru/report.py`:
@@ -35,8 +37,9 @@ verdict back to that repository. It is generated: a pull request here is not how
   `NIKATRU_DETAIL_KEY` (seals each job's red detail at hand-off; held by the hand-off steps and the
   report job's send),
   `BRIDGE_READ_SECRET` (signs the live read of the pull request; held only by the gate's
-  body step and the recheck), plus what each
-  workflow reads.
+  body step, the recheck and the bridge ops steps),
+  `BRIDGE_ARTIFACT_SECRET` (signs a private artifact upload; held only by the private-artifact
+  steps), plus what each workflow reads.
 
 ## Workflows (34)
 

@@ -339,6 +339,19 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture.18 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Store FAILED-not-a-listing-set-${{ github.run_id }} in the bridge's private home (generated)
+        if: failure()
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: |
+            apps/${{ needs.gate.outputs.app }}/store/android-play/screenshots/
+            apps/${{ needs.gate.outputs.app }}/store/android-play/screenshots-tablet/
+          NIKATRU_ARTIFACT_NAME: FAILED-not-a-listing-set-${{ github.run_id }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
       - name: Print the ink reading of a FAILED run, for diagnosis only
         if: failure() && steps.listing.outcome == 'failure'
         run: |
@@ -348,6 +361,38 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture.20 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Store play-screenshots-${{ needs.gate.outputs.app }} in the bridge's private home (generated)
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: |
+            apps/${{ needs.gate.outputs.app }}/store/android-play/screenshots/
+            apps/${{ needs.gate.outputs.app }}/store/android-play/screenshots-tablet/
+            sites/nikatru/apps/shots/
+            sites/nikatru/apps/*.html
+            tooling/site-shots.json
+          NIKATRU_ARTIFACT_NAME: play-screenshots-${{ needs.gate.outputs.app }}
+          NIKATRU_IF_NO_FILES: error
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
+      - name: Store dry-run-android-play-${{ needs.gate.outputs.app }} in the bridge's private home (generated)
+        if: ${{ inputs.dry_run }}
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: |
+            apps/${{ needs.gate.outputs.app }}/store/android-play/screenshots/
+            apps/${{ needs.gate.outputs.app }}/store/android-play/screenshots-tablet/
+            sites/nikatru/apps/shots/
+            sites/nikatru/apps/*.html
+            tooling/site-shots.json
+          NIKATRU_ARTIFACT_NAME: dry-run-android-play-${{ needs.gate.outputs.app }}
+          NIKATRU_IF_NO_FILES: error
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
       - name: Propose the set for human review (pull request)
         if: ${{ !inputs.dry_run }}
         env:
@@ -688,6 +733,17 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-linux.17 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Store FAILED-not-a-listing-set-${{ github.run_id }} in the bridge's private home (generated)
+        if: failure() && steps.reg.outputs.dir != ''
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: ${{ steps.reg.outputs.dir }}/
+          NIKATRU_ARTIFACT_NAME: FAILED-not-a-listing-set-${{ github.run_id }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
       - name: Print the ink reading of a FAILED run, for diagnosis only
         if: failure() && steps.listing.outcome == 'failure'
         env:
@@ -699,6 +755,28 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-linux.19 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Store snap-screenshots-${{ needs.gate.outputs.app }} in the bridge's private home (generated)
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: ${{ steps.reg.outputs.dir }}/
+          NIKATRU_ARTIFACT_NAME: snap-screenshots-${{ needs.gate.outputs.app }}
+          NIKATRU_IF_NO_FILES: error
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
+      - name: Store dry-run-linux-snap-${{ needs.gate.outputs.app }} in the bridge's private home (generated)
+        if: ${{ inputs.dry_run }}
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: ${{ steps.reg.outputs.dir }}/
+          NIKATRU_ARTIFACT_NAME: dry-run-linux-snap-${{ needs.gate.outputs.app }}
+          NIKATRU_IF_NO_FILES: error
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
       - name: Propose the set for human review (pull request)
         if: ${{ !inputs.dry_run }}
         env:
@@ -1040,6 +1118,17 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-desktop-native.16 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+      - name: Store FAILED-not-a-listing-set-${{ github.run_id }} in the bridge's private home (generated)
+        if: failure() && steps.reg.outputs.dir != ''
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: ${{ steps.reg.outputs.dir }}/
+          NIKATRU_ARTIFACT_NAME: FAILED-not-a-listing-set-${{ github.run_id }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
       - name: Print the ink reading of a FAILED run, for diagnosis only
         if: failure() && steps.listing.outcome == 'failure'
         env:
@@ -1051,6 +1140,28 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-desktop-native.18 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+      - name: Store ${{ inputs.channel }}-screenshots-${{ needs.gate.outputs.app }} in the bridge's private home (generated)
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: ${{ steps.reg.outputs.dir }}/
+          NIKATRU_ARTIFACT_NAME: ${{ inputs.channel }}-screenshots-${{ needs.gate.outputs.app }}
+          NIKATRU_IF_NO_FILES: error
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
+      - name: Store dry-run-${{ inputs.channel }}-${{ needs.gate.outputs.app }} in the bridge's private home (generated)
+        if: ${{ inputs.dry_run }}
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: ${{ steps.reg.outputs.dir }}/
+          NIKATRU_ARTIFACT_NAME: dry-run-${{ inputs.channel }}-${{ needs.gate.outputs.app }}
+          NIKATRU_IF_NO_FILES: error
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
       - name: Propose the set for human review (pull request)
         if: ${{ !inputs.dry_run }}
         env:
@@ -1415,6 +1526,17 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.18 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Store FAILED-not-a-listing-set-${{ github.run_id }} in the bridge's private home (generated)
+        if: failure()
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: apps/${{ needs.gate.outputs.app }}/store/ios-appstore/
+          NIKATRU_ARTIFACT_NAME: FAILED-not-a-listing-set-${{ github.run_id }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
       - name: Print the ink reading of a FAILED run, for diagnosis only
         if: failure() && steps.listing.outcome == 'failure'
         run: |
@@ -1424,6 +1546,34 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.20 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Store ios-screenshots-${{ needs.gate.outputs.app }} in the bridge's private home (generated)
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: |
+            apps/${{ needs.gate.outputs.app }}/store/ios-appstore/screenshots/
+            apps/${{ needs.gate.outputs.app }}/store/ios-appstore/screenshots-ipad/
+            apps/${{ needs.gate.outputs.app }}/store/ios-appstore/iap-review/
+          NIKATRU_ARTIFACT_NAME: ios-screenshots-${{ needs.gate.outputs.app }}
+          NIKATRU_IF_NO_FILES: error
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
+      - name: Store dry-run-ios-appstore-${{ needs.gate.outputs.app }} in the bridge's private home (generated)
+        if: ${{ inputs.dry_run }}
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: |
+            apps/${{ needs.gate.outputs.app }}/store/ios-appstore/screenshots/
+            apps/${{ needs.gate.outputs.app }}/store/ios-appstore/screenshots-ipad/
+            apps/${{ needs.gate.outputs.app }}/store/ios-appstore/iap-review/
+          NIKATRU_ARTIFACT_NAME: dry-run-ios-appstore-${{ needs.gate.outputs.app }}
+          NIKATRU_IF_NO_FILES: error
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
       - name: Propose the sets for human review (pull request)
         if: ${{ !inputs.dry_run }}
         env:

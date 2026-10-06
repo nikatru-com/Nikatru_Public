@@ -106,6 +106,17 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name rehearse-app2.rehearse.7 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Store app2-rehearsal in the bridge's private home (generated)
+        if: ${{ !cancelled() }}
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: ${{ runner.temp }}/app2-rehearsal.json
+          NIKATRU_ARTIFACT_NAME: app2-rehearsal
+          NIKATRU_IF_NO_FILES: error
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
       - name: The totals
         if: ${{ !cancelled() }}
         run: |
