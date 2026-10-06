@@ -94,6 +94,13 @@
 # verdict the landers gate on. The bridge itself holds the context to this workflow's own
 # set (services/gh-bridge/src/generated/shell.ts, written by gen-public-shell.mjs).
 #
+# ⏱ 2026-10-05 (p7-shell-fixes, B1): EVERY POST NAMES ITS OWN AGENT. The bridge's route is
+# workers.dev, behind Cloudflare's Browser Integrity Check, which refuses Python's default
+# `User-Agent: Python-urllib/3.x` with 403 / error code 1010 before the Worker runs. Measured
+# from Box A in the P7 rehearsal: that agent 403/1010, a curl agent 401 "bad signature" (it
+# reached the Worker), and every report of R1 and R2 was the 403 — no status from the shell.
+# post() sends USER_AGENT; the test bridge refuses the default agent exactly as the edge does.
+#
 # Exit 0 every report accepted (handoff: sealed, or nothing to hand over; collect: the
 # bundle written) · 1 a report refused or not delivered (a verdict that did not land
 # must not look green) · 2 COVERAGE LOST: no config, no bridge URL, no secret, no sha —
@@ -132,6 +139,8 @@ SEAL_VERSION = b'\x01'
 NONCE_BYTES = 16
 TAG_BYTES = 32
 DETAIL_DIR = '.nikatru-detail'
+# The agent every POST to the bridge names (B1): never urllib's default, which the edge bans.
+USER_AGENT = 'nikatru-shell-report/1'
 COLLECTED_DIR = '.nikatru-collected'
 
 
@@ -381,6 +390,7 @@ def post(url, secret, body, opener=urllib.request.urlopen):
     raw = json.dumps(body, ensure_ascii=False).encode('utf-8')
     req = urllib.request.Request(url, data=raw, method='POST', headers={
         'content-type': 'application/json',
+        'user-agent': USER_AGENT,
         'x-bridge-signature': signature(secret, raw),
     })
     try:

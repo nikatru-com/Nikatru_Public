@@ -29,14 +29,17 @@ verdict back to that repository. It is generated: a pull request here is not how
   body step and the recheck), plus what each
   workflow reads.
 
-## Workflows (9)
+## Workflows (12)
 
+- `build-platforms.yml` — reports `all-platforms`
 - `ci.yml` — reports `ci-gate`
 - `codeql.yml` — reports `codeql`
 - `deploy-web.yml`
 - `deploy-workers.yml`
+- `e2e.yml` — reports `e2e`
 - `extensions-ci.yml`
 - `lane-workers.yml`
 - `migrate-platform-db.yml`
+- `ops-watch.yml` — reports `ops-watch`
 - `pr-recheck.yml`
 - `renovate.yml` — reports `renovate`

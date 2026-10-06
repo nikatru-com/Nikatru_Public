@@ -1,0 +1,71 @@
+{
+  "_generated": "by tooling/ci/gen-public-shell.mjs; read by report.py beside it. Do not edit.",
+  "bridgeUrl": "https://gh-bridge.nikatru.workers.dev/report",
+  "prefix": "nikatru-detail-",
+  "slots": 8,
+  "gate": {
+    "job": "all_platforms",
+    "context": "all-platforms",
+    "members": [
+      "build-platforms.all_platforms."
+    ]
+  },
+  "lanes": [
+    {
+      "job": "gate",
+      "context": "build-platforms/gate",
+      "members": [
+        "build-platforms.gate."
+      ]
+    },
+    {
+      "job": "prepare",
+      "context": "build-platforms/prepare",
+      "members": [
+        "build-platforms.prepare."
+      ]
+    },
+    {
+      "job": "linux_web_android",
+      "context": "build-platforms/linux_web_android",
+      "members": [
+        "build-platforms.linux_web_android."
+      ]
+    },
+    {
+      "job": "windows",
+      "context": "build-platforms/windows",
+      "members": [
+        "build-platforms.windows."
+      ]
+    },
+    {
+      "job": "apple",
+      "context": "build-platforms/apple",
+      "members": [
+        "build-platforms.apple."
+      ]
+    },
+    {
+      "job": "durable_symbols",
+      "context": "build-platforms/durable_symbols",
+      "members": [
+        "build-platforms.durable_symbols."
+      ]
+    },
+    {
+      "job": "release",
+      "context": "build-platforms/release",
+      "members": [
+        "build-platforms.release."
+      ]
+    },
+    {
+      "job": "attest",
+      "context": "build-platforms/attest",
+      "members": [
+        "build-platforms.attest."
+      ]
+    }
+  ]
+}

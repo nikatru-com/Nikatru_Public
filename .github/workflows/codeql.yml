@@ -65,7 +65,7 @@ jobs:
             echo "NIKATRU_HEAD_SHA=${NIKATRU_P_SHA:-$(git rev-parse HEAD)}"
             echo "NIKATRU_EVENT_NAME=$NIKATRU_P_EVENT"
             echo "NIKATRU_REF=$NIKATRU_P_REF"
-            echo "NIKATRU_REF_NAME=${NIKATRU_P_REF#refs/heads/}"
+            echo "NIKATRU_REF_NAME=${NIKATRU_P_REF#refs/*/}"
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
@@ -147,6 +147,7 @@ jobs:
         with:
           repository: ${{ env.NIKATRU_PRIVATE_REPO }}
           ref: ${{ github.event.client_payload.event == 'pull_request' && format('refs/pull/{0}/merge', github.event.client_payload.pr) || github.event.client_payload.sha || 'main' }}
+          fetch-depth: ${{ env.NIKATRU_PRIVATE_REPO && '2' || '1' }}
           ssh-key: ${{ secrets.PRIVATE_DEPLOY_KEY }}
           persist-credentials: false
       - name: Name the private commit (generated)
@@ -174,7 +175,7 @@ jobs:
             echo "NIKATRU_HEAD_SHA=${NIKATRU_P_SHA:-$(git rev-parse HEAD)}"
             echo "NIKATRU_EVENT_NAME=$NIKATRU_P_EVENT"
             echo "NIKATRU_REF=$NIKATRU_P_REF"
-            echo "NIKATRU_REF_NAME=${NIKATRU_P_REF#refs/heads/}"
+            echo "NIKATRU_REF_NAME=${NIKATRU_P_REF#refs/*/}"
             echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
             echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
             echo "NIKATRU_PR=$NIKATRU_P_PR"
@@ -191,8 +192,9 @@ jobs:
         uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2
         with:
           category: /language:javascript-typescript
-          upload: ${{ env.NIKATRU_PRIVATE_REPO && 'never' || 'always' }}
           output: ${{ runner.temp }}/codeql-sarif
+          upload: never
+          upload-database: false
       - uses: ./.github/actions/setup-node
         if: ${{ (github.event.client_payload.event || github.event_name) != 'pull_request' || env.NIKATRU_PRIVATE_REPO != '' }}
       - name: CodeQL counts, the alerts to the private pull request
