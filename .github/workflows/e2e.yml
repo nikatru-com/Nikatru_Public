@@ -1137,12 +1137,13 @@ jobs:
             echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
             echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
+      - uses: ./.github/actions/setup-node
       - name: File the failure against one durable issue
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
           TITLE: 'Nightly E2E (live) is failing against production'
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BRIDGE_READ_SECRET: ${{ secrets.BRIDGE_READ_SECRET }}
+          NIKATRU_BRIDGE_OPS_URL: https://gh-bridge.nikatru.workers.dev/ops
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -1182,24 +1183,12 @@ jobs:
           BODY
           } > "$body"
 
-          # Looked up through the LIST api, not the search index: search lags
-          # behind writes, and a lookup that misses opens a duplicate.
-          existing="$(gh issue list --state open --limit 200 --json number,title \
-            --jq '[.[] | select(.title == env.TITLE) | .number] | first // empty')"
-
-          if [ -n "$existing" ]; then
-            gh issue comment "$existing" --body "Still red. ${note}"
-            url="${GITHUB_SERVER_URL}/${GH_REPO}/issues/${existing}"
-            echo "::warning title=Nightly E2E still failing::commented on the already-open issue #${existing}"
-          else
-            url="$(gh issue create --title "$TITLE" --body-file "$body")"
-            echo "::error title=Nightly E2E failed::opened ${url}"
-          fi
-
-          echo "Nightly E2E failure tracked at ${url}" >> "$GITHUB_STEP_SUMMARY"
+          # The bridge finds the open issue by this TITLE through the LIST api (search lags writes),
+          # comments on it, or opens it with this body; a retry of this run attempt edits its comment.
+          node tooling/ops/ops-issue.mjs --kind e2e --body-file "$body"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.alert.1 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.alert.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
