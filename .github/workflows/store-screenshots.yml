@@ -388,78 +388,36 @@ jobs:
       - name: Propose the set for human review (pull request)
         if: ${{ !inputs.dry_run }}
         env:
-          GH_TOKEN: ${{ github.token }}
-          SHOTS: apps/${{ needs.gate.outputs.app }}/store/android-play/screenshots apps/${{ needs.gate.outputs.app }}/store/android-play/screenshots-tablet ${{ steps.finish.outputs.paths }} ${{ steps.site.outputs.paths }}
+          NIKATRU_PROPOSE_PATHS: apps/${{ needs.gate.outputs.app }}/store/android-play/screenshots apps/${{ needs.gate.outputs.app }}/store/android-play/screenshots-tablet ${{ steps.finish.outputs.paths }} ${{ steps.site.outputs.paths }}
+          NIKATRU_PROPOSE_BRANCH: chore/play-screenshots-${{ github.run_id }}
+          NIKATRU_PROPOSE_BASE: main
+          NIKATRU_PROPOSE_TITLE: 'chore(play): the captured screenshot set, for review'
+          NIKATRU_PROPOSE_MESSAGE: |
+            chore(play): the captured screenshot set, for review
+
+            Captured live by .github/workflows/store-screenshots.yml against a
+            build with the real backend defines, so no "Demo data" banner and none
+            of the twelve third-party trademarks the demo seed carries.
+
+            CAPTURE.json records the posture; tooling/ci/assert-listing-assets.mjs
+            proves size, count, aspect, format and the ABSENCE OF THE DEMO BANNER
+            in pixels, and refuses a set whose provenance nobody wrote down.
+
+            What it cannot prove is whether these are the screens worth showing.
+            That is the reason this arrives as a pull request: look at the images
+            in the diff before merging.
+          NIKATRU_PROPOSE_BODY: |
+            Rows: none — automated store screenshot capture, reviewed by eye
+
+            Captured by run `${{ github.run_id }}`. **Look at the images in the Files changed tab** — the guard proves size, count, format, aspect and that no demo banner is present in the pixels; it cannot judge whether these are the screens worth showing, and Google requires screenshots to demonstrate the actual in-app experience. Merging is the human decision this PR exists to ask for.
+          NIKATRU_PROPOSE_ARTIFACT: proposal-store-screenshots.capture
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+          NIKATRU_BRIDGE_PROPOSE_URL: https://gh-bridge.nikatru.workers.dev/propose
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          set -euo pipefail
-          BRANCH="chore/play-screenshots-${{ github.run_id }}"
-
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          # -f: the listing directory is not gitignored, but being explicit means
-          # a future ignore rule cannot silently drop the payload of this PR.
-          for d in $SHOTS; do git add -f "$d"; done
-          if git diff --cached --quiet; then
-            echo "::notice title=Nothing to propose::The captured set is byte-identical to what is already committed. The listing already carries this exact capture; no pull request is needed."
-            exit 0
-          fi
-
-          git checkout -b "$BRANCH"
-          git commit -F - <<'MSG'
-          chore(play): the captured screenshot set, for review
-
-          Captured live by .github/workflows/store-screenshots.yml against a
-          build with the real backend defines, so no "Demo data" banner and none
-          of the twelve third-party trademarks the demo seed carries.
-
-          CAPTURE.json records the posture; tooling/ci/assert-listing-assets.mjs
-          proves size, count, aspect, format and the ABSENCE OF THE DEMO BANNER
-          in pixels, and refuses a set whose provenance nobody wrote down.
-
-          What it cannot prove is whether these are the screens worth showing.
-          That is the reason this arrives as a pull request: look at the images
-          in the diff before merging.
-          MSG
-
-          # why: the CODE repository, not the run's: in the public shell (gen-public-shell.mjs) the header sets
-          # NIKATRU_PRIVATE_REPO and GITHUB_REPOSITORY names the PUBLIC shell, so a push must never take it there.
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${NIKATRU_PRIVATE_REPO:-$GITHUB_REPOSITORY}.git" "$BRANCH"
-
-          # ── 🔴 `gh pr create` CAN BE REFUSED, AND A REFUSAL IS NOT A LISTING ─
-          # "Allow GitHub Actions to create and approve pull requests"
-          # (repository Settings → Actions → General) gates every `gh pr create`
-          # run by GITHUB_TOKEN. Measured OFF on 2026-08-26
-          # (`can_approve_pull_request_reviews: false`), and this call site had
-          # never executed: the one green run (30922349590, 2026-08-04) predates
-          # this step, and the two runs since both failed in `Capture the set`
-          # and skipped it. This job is the ONLY producer of the Play tablet
-          # set, so a silent refusal here is a submission that stays blocked
-          # with a green tick over it.
-          set +e
-          gh pr create \
-            --base "${NIKATRU_REF_NAME}" \
-            --head "$BRANCH" \
-            --title "chore(play): the captured screenshot set, for review" \
-            --body "Captured by run \`${{ github.run_id }}\`. **Look at the images in the Files changed tab** — the guard proves size, count, format, aspect and that no demo banner is present in the pixels; it cannot judge whether these are the screens worth showing, and Google requires screenshots to demonstrate the actual in-app experience. Merging is the human decision this PR exists to ask for."$'\n\nRows: none — automated store screenshot capture, reviewed by eye' > "${RUNNER_TEMP}/gh-pr-create.log" 2>&1
-          PR_RC=$?
-          set -e
-          cat "${RUNNER_TEMP}/gh-pr-create.log"
-
-          if [ "$PR_RC" -ne 0 ]; then
-            if grep -qiF 'not permitted to create or approve pull requests' "${RUNNER_TEMP}/gh-pr-create.log"; then
-              CAUSE='the repository setting "Allow GitHub Actions to create and approve pull requests" is OFF.'
-              REMEDY='REMEDY (owner work — no workflow can set this for itself): Settings → Actions → General → Workflow permissions → tick "Allow GitHub Actions to create and approve pull requests". API equivalent: gh api -X PUT "repos/'"${GITHUB_REPOSITORY}"'/actions/permissions/workflow" -F can_approve_pull_request_reviews=true'
-            else
-              CAUSE="gh pr create exited ${PR_RC} for a reason this step does not recognise."
-              REMEDY='REMEDY: read the gh output above.'
-            fi
-
-            echo "::error title=The screenshot set was captured but the pull request could not be opened::${CAUSE} THE CAPTURE IS NOT LOST — branch ${BRANCH} is pushed and the same pixels are already uploaded as this run's play-screenshots-${APP} artifact; open the pull request by hand from ${BRANCH} into ${NIKATRU_REF_NAME}. ${REMEDY}"
-            exit 1
-          fi
+          node tooling/ops/bridge-propose.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
@@ -764,70 +722,37 @@ jobs:
       - name: Propose the set for human review (pull request)
         if: ${{ !inputs.dry_run }}
         env:
-          GH_TOKEN: ${{ github.token }}
-          SHOTS: ${{ steps.reg.outputs.dir }} ${{ steps.finish.outputs.paths }}
+          NIKATRU_PROPOSE_PATHS: ${{ steps.reg.outputs.dir }} ${{ steps.finish.outputs.paths }}
+          NIKATRU_PROPOSE_BRANCH: chore/linux-snap-screenshots-${{ github.run_id }}
+          NIKATRU_PROPOSE_BASE: main
+          NIKATRU_PROPOSE_TITLE: 'chore(snap): the captured screenshot set, for review'
+          NIKATRU_PROPOSE_MESSAGE: |
+            chore(snap): the captured screenshot set, for review
+
+            Captured live by .github/workflows/store-screenshots.yml against the
+            REAL Linux binary with the real backend defines — no "Demo data"
+            banner and none of the twelve third-party trademarks the demo seed
+            carries.
+
+            CAPTURE.json records the posture; tooling/ci/assert-listing-assets.mjs
+            proves size, count, aspect, format and the ABSENCE OF THE DEMO BANNER
+            in pixels, and refuses a set whose provenance nobody wrote down.
+
+            What it cannot prove is whether these are the screens worth showing.
+            That is the reason this arrives as a pull request: look at the images
+            in the diff before merging.
+          NIKATRU_PROPOSE_BODY: |
+            Rows: none — automated store screenshot capture, reviewed by eye
+
+            Captured by run `${{ github.run_id }}` from the real Linux binary. **Look at the images in the Files changed tab** — the guard proves size, count, format, aspect and that no demo banner is present in the pixels; it cannot judge whether these are the screens worth showing. Merging is the human decision this PR exists to ask for.
+          NIKATRU_PROPOSE_ARTIFACT: proposal-store-screenshots.capture-linux
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+          NIKATRU_BRIDGE_PROPOSE_URL: https://gh-bridge.nikatru.workers.dev/propose
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          set -euo pipefail
-          BRANCH="chore/linux-snap-screenshots-${{ github.run_id }}"
-
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          for d in $SHOTS; do git add -f "$d"; done
-          if git diff --cached --quiet; then
-            echo "::notice title=Nothing to propose::The captured set is byte-identical to what is already committed. The listing already carries this exact capture; no pull request is needed."
-            exit 0
-          fi
-
-          git checkout -b "$BRANCH"
-          git commit -F - <<'MSG'
-          chore(snap): the captured screenshot set, for review
-
-          Captured live by .github/workflows/store-screenshots.yml against the
-          REAL Linux binary with the real backend defines — no "Demo data"
-          banner and none of the twelve third-party trademarks the demo seed
-          carries.
-
-          CAPTURE.json records the posture; tooling/ci/assert-listing-assets.mjs
-          proves size, count, aspect, format and the ABSENCE OF THE DEMO BANNER
-          in pixels, and refuses a set whose provenance nobody wrote down.
-
-          What it cannot prove is whether these are the screens worth showing.
-          That is the reason this arrives as a pull request: look at the images
-          in the diff before merging.
-          MSG
-
-          # why: the CODE repository, not the run's: in the public shell (gen-public-shell.mjs) the header sets
-          # NIKATRU_PRIVATE_REPO and GITHUB_REPOSITORY names the PUBLIC shell, so a push must never take it there.
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${NIKATRU_PRIVATE_REPO:-$GITHUB_REPOSITORY}.git" "$BRANCH"
-
-          # The same refusal path the Play job documents: "Allow GitHub Actions
-          # to create and approve pull requests" gates every `gh pr create` run
-          # by GITHUB_TOKEN, and was measured OFF on 2026-08-26. A silent refusal
-          # here is a submission that stays blocked with a green tick over it.
-          set +e
-          gh pr create \
-            --base "${NIKATRU_REF_NAME}" \
-            --head "$BRANCH" \
-            --title "chore(snap): the captured screenshot set, for review" \
-            --body "Captured by run \`${{ github.run_id }}\` from the real Linux binary. **Look at the images in the Files changed tab** — the guard proves size, count, format, aspect and that no demo banner is present in the pixels; it cannot judge whether these are the screens worth showing. Merging is the human decision this PR exists to ask for."$'\n\nRows: none — automated store screenshot capture, reviewed by eye' > "${RUNNER_TEMP}/gh-pr-create.log" 2>&1
-          PR_RC=$?
-          set -e
-          cat "${RUNNER_TEMP}/gh-pr-create.log"
-
-          if [ "$PR_RC" -ne 0 ]; then
-            if grep -qiF 'not permitted to create or approve pull requests' "${RUNNER_TEMP}/gh-pr-create.log"; then
-              CAUSE='the repository setting "Allow GitHub Actions to create and approve pull requests" is OFF.'
-              REMEDY='REMEDY (owner work — no workflow can set this for itself): Settings → Actions → General → Workflow permissions → tick "Allow GitHub Actions to create and approve pull requests".'
-            else
-              CAUSE="gh pr create exited ${PR_RC} for a reason this step does not recognise."
-              REMEDY='REMEDY: read the gh output above.'
-            fi
-            echo "::error title=The screenshot set was captured but the pull request could not be opened::${CAUSE} THE CAPTURE IS NOT LOST — branch ${BRANCH} is pushed and the same pixels are already uploaded as this run's snap-screenshots-${APP} artifact; open the pull request by hand from ${BRANCH} into ${NIKATRU_REF_NAME}. ${REMEDY}"
-            exit 1
-          fi
+          node tooling/ops/bridge-propose.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-linux.22 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
@@ -1141,69 +1066,37 @@ jobs:
       - name: Propose the set for human review (pull request)
         if: ${{ !inputs.dry_run }}
         env:
-          GH_TOKEN: ${{ github.token }}
-          SHOTS: ${{ steps.reg.outputs.dir }} ${{ steps.finish.outputs.paths }}
+          NIKATRU_PROPOSE_PATHS: ${{ steps.reg.outputs.dir }} ${{ steps.finish.outputs.paths }}
+          NIKATRU_PROPOSE_BRANCH: chore/${{ inputs.channel }}-screenshots-${{ github.run_id }}
+          NIKATRU_PROPOSE_BASE: main
+          NIKATRU_PROPOSE_TITLE: 'chore(${{ inputs.channel }}): the captured screenshot set, for review'
+          NIKATRU_PROPOSE_MESSAGE: |
+            chore(${{ inputs.channel }}): the captured screenshot set, for review
+
+            Captured live by .github/workflows/store-screenshots.yml against the
+            REAL native desktop binary with the real backend defines — no "Demo
+            data" banner and none of the twelve third-party trademarks the demo
+            seed carries.
+
+            CAPTURE.json records the posture; tooling/ci/assert-listing-assets.mjs
+            proves size, count, aspect, format and the ABSENCE OF THE DEMO BANNER
+            in pixels, and refuses a set whose provenance nobody wrote down.
+
+            What it cannot prove is whether these are the screens worth showing.
+            That is the reason this arrives as a pull request: look at the images
+            in the diff before merging.
+          NIKATRU_PROPOSE_BODY: |
+            Rows: none — automated store screenshot capture, reviewed by eye
+
+            Captured by run `${{ github.run_id }}` from the real native desktop binary. **Look at the images in the Files changed tab** — the guard proves size, count, format, aspect and that no demo banner is present in the pixels; it cannot judge whether these are the screens worth showing. Merging is the human decision this PR exists to ask for.
+          NIKATRU_PROPOSE_ARTIFACT: proposal-store-screenshots.capture-desktop-native
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+          NIKATRU_BRIDGE_PROPOSE_URL: https://gh-bridge.nikatru.workers.dev/propose
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          set -euo pipefail
-          BRANCH="chore/${STORE_CHANNEL}-screenshots-${{ github.run_id }}"
-
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          for d in $SHOTS; do git add -f "$d"; done
-          if git diff --cached --quiet; then
-            echo "::notice title=Nothing to propose::The captured set is byte-identical to what is already committed. The listing already carries this exact capture; no pull request is needed."
-            exit 0
-          fi
-
-          git checkout -b "$BRANCH"
-          git commit -F - <<MSG
-          chore(${STORE_CHANNEL}): the captured screenshot set, for review
-
-          Captured live by .github/workflows/store-screenshots.yml against the
-          REAL native desktop binary with the real backend defines — no "Demo
-          data" banner and none of the twelve third-party trademarks the demo
-          seed carries.
-
-          CAPTURE.json records the posture; tooling/ci/assert-listing-assets.mjs
-          proves size, count, aspect, format and the ABSENCE OF THE DEMO BANNER
-          in pixels, and refuses a set whose provenance nobody wrote down.
-
-          What it cannot prove is whether these are the screens worth showing.
-          That is the reason this arrives as a pull request: look at the images
-          in the diff before merging.
-          MSG
-
-          # why: the CODE repository, not the run's: in the public shell (gen-public-shell.mjs) the header sets
-          # NIKATRU_PRIVATE_REPO and GITHUB_REPOSITORY names the PUBLIC shell, so a push must never take it there.
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${NIKATRU_PRIVATE_REPO:-$GITHUB_REPOSITORY}.git" "$BRANCH"
-
-          # The same refusal path the other two jobs document: "Allow GitHub
-          # Actions to create and approve pull requests" gates every `gh pr
-          # create` run by GITHUB_TOKEN, and was measured OFF on 2026-08-26.
-          set +e
-          gh pr create \
-            --base "${NIKATRU_REF_NAME}" \
-            --head "$BRANCH" \
-            --title "chore(${STORE_CHANNEL}): the captured screenshot set, for review" \
-            --body "Captured by run \`${{ github.run_id }}\` from the real native desktop binary. **Look at the images in the Files changed tab** — the guard proves size, count, format, aspect and that no demo banner is present in the pixels; it cannot judge whether these are the screens worth showing. Merging is the human decision this PR exists to ask for."$'\n\nRows: none — automated store screenshot capture, reviewed by eye' > "${RUNNER_TEMP}/gh-pr-create.log" 2>&1
-          PR_RC=$?
-          set -e
-          cat "${RUNNER_TEMP}/gh-pr-create.log"
-
-          if [ "$PR_RC" -ne 0 ]; then
-            if grep -qiF 'not permitted to create or approve pull requests' "${RUNNER_TEMP}/gh-pr-create.log"; then
-              CAUSE='the repository setting "Allow GitHub Actions to create and approve pull requests" is OFF.'
-              REMEDY='REMEDY (owner work — no workflow can set this for itself): Settings → Actions → General → Workflow permissions → tick "Allow GitHub Actions to create and approve pull requests".'
-            else
-              CAUSE="gh pr create exited ${PR_RC} for a reason this step does not recognise."
-              REMEDY='REMEDY: read the gh output above.'
-            fi
-            echo "::error title=The screenshot set was captured but the pull request could not be opened::${CAUSE} THE CAPTURE IS NOT LOST — branch ${BRANCH} is pushed and the same pixels are already uploaded as this run's ${STORE_CHANNEL}-screenshots-${APP} artifact; open the pull request by hand from ${BRANCH} into ${NIKATRU_REF_NAME}. ${REMEDY}"
-            exit 1
-          fi
+          node tooling/ops/bridge-propose.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-desktop-native.21 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
@@ -1545,72 +1438,40 @@ jobs:
       - name: Propose the sets for human review (pull request)
         if: ${{ !inputs.dry_run }}
         env:
-          GH_TOKEN: ${{ github.token }}
-          SHOTS: ${{ steps.reg.outputs.dirs }} ${{ steps.finish.outputs.paths }} apps/${{ needs.gate.outputs.app }}/store/ios-appstore/iap-review
+          NIKATRU_PROPOSE_PATHS: ${{ steps.reg.outputs.dirs }} ${{ steps.finish.outputs.paths }} apps/${{ needs.gate.outputs.app }}/store/ios-appstore/iap-review
+          NIKATRU_PROPOSE_BRANCH: chore/ios-screenshots-${{ github.run_id }}
+          NIKATRU_PROPOSE_BASE: main
+          NIKATRU_PROPOSE_TITLE: 'chore(ios): the captured screenshot sets, for review'
+          NIKATRU_PROPOSE_MESSAGE: |
+            chore(ios): the captured screenshot sets, for review
+
+            BOTH size classes — iPhone and iPad — captured live by
+            .github/workflows/store-screenshots.yml from ONE build with ONE
+            signed-in account, against the real backend defines. No "Demo data"
+            banner and none of the twelve third-party trademarks the demo seed
+            carries.
+
+            CAPTURE.json records the posture; tooling/ci/assert-listing-assets.mjs
+            proves size, count, aspect, format and the ABSENCE OF THE DEMO BANNER
+            in pixels, and tooling/ci/assert-play-device-coverage.mjs proves both
+            size classes are present — a set short is a rejected upload.
+
+            What neither can prove is whether these are the screens worth showing,
+            or whether the iPad frames show a tablet layout rather than a stretched
+            phone one. That is the reason this arrives as a pull request: look at
+            the images in the diff before merging.
+          NIKATRU_PROPOSE_BODY: |
+            Rows: none — automated store screenshot capture, reviewed by eye
+
+            Captured by run `${{ github.run_id }}` from the real iOS build on the simulators the register names — **both** size classes from one build, and the App Store IAP review screenshots. **Look at the images in the Files changed tab**, and look hardest at the iPad ones: the guards prove size, count, format and that both sets exist, and cannot judge whether the iPad frames show a tablet layout or a stretched phone one. Merging is the human decision this PR exists to ask for.
+          NIKATRU_PROPOSE_ARTIFACT: proposal-store-screenshots.capture-ios
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+          NIKATRU_BRIDGE_PROPOSE_URL: https://gh-bridge.nikatru.workers.dev/propose
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          set -euo pipefail
-          BRANCH="chore/ios-screenshots-${{ github.run_id }}"
-
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          for d in $SHOTS; do git add -f "$d"; done
-          if git diff --cached --quiet; then
-            echo "::notice title=Nothing to propose::The captured sets are byte-identical to what is already committed. The listing already carries this exact capture; no pull request is needed."
-            exit 0
-          fi
-
-          git checkout -b "$BRANCH"
-          git commit -F - <<'MSG'
-          chore(ios): the captured screenshot sets, for review
-
-          BOTH size classes — iPhone and iPad — captured live by
-          .github/workflows/store-screenshots.yml from ONE build with ONE
-          signed-in account, against the real backend defines. No "Demo data"
-          banner and none of the twelve third-party trademarks the demo seed
-          carries.
-
-          CAPTURE.json records the posture; tooling/ci/assert-listing-assets.mjs
-          proves size, count, aspect, format and the ABSENCE OF THE DEMO BANNER
-          in pixels, and tooling/ci/assert-play-device-coverage.mjs proves both
-          size classes are present — a set short is a rejected upload.
-
-          What neither can prove is whether these are the screens worth showing,
-          or whether the iPad frames show a tablet layout rather than a stretched
-          phone one. That is the reason this arrives as a pull request: look at
-          the images in the diff before merging.
-          MSG
-
-          # why: the CODE repository, not the run's: in the public shell (gen-public-shell.mjs) the header sets
-          # NIKATRU_PRIVATE_REPO and GITHUB_REPOSITORY names the PUBLIC shell, so a push must never take it there.
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${NIKATRU_PRIVATE_REPO:-$GITHUB_REPOSITORY}.git" "$BRANCH"
-
-          # The same refusal path the other capture jobs document: "Allow GitHub
-          # Actions to create and approve pull requests" gates every `gh pr
-          # create` run by GITHUB_TOKEN, and was measured OFF on 2026-08-26.
-          set +e
-          gh pr create \
-            --base "${NIKATRU_REF_NAME}" \
-            --head "$BRANCH" \
-            --title "chore(ios): the captured screenshot sets, for review" \
-            --body "Captured by run \`${{ github.run_id }}\` from the real iOS build on the simulators the register names — **both** size classes from one build. **Look at the images in the Files changed tab**, and look hardest at the iPad ones: the guards prove size, count, format and that both sets exist, and cannot judge whether the iPad frames show a tablet layout or a stretched phone one. Merging is the human decision this PR exists to ask for."$'\n\nRows: none — automated store screenshot capture, reviewed by eye' > "${RUNNER_TEMP}/gh-pr-create.log" 2>&1
-          PR_RC=$?
-          set -e
-          cat "${RUNNER_TEMP}/gh-pr-create.log"
-
-          if [ "$PR_RC" -ne 0 ]; then
-            if grep -qiF 'not permitted to create or approve pull requests' "${RUNNER_TEMP}/gh-pr-create.log"; then
-              CAUSE='the repository setting "Allow GitHub Actions to create and approve pull requests" is OFF.'
-              REMEDY='REMEDY (owner work — no workflow can set this for itself): Settings → Actions → General → Workflow permissions → tick "Allow GitHub Actions to create and approve pull requests".'
-            else
-              CAUSE="gh pr create exited ${PR_RC} for a reason this step does not recognise."
-              REMEDY='REMEDY: read the gh output above.'
-            fi
-            echo "::error title=The screenshot sets were captured but the pull request could not be opened::${CAUSE} THE CAPTURE IS NOT LOST — branch ${BRANCH} is pushed and the same pixels are already uploaded as this run's ios-screenshots-${APP} artifact; open the pull request by hand from ${BRANCH} into ${NIKATRU_REF_NAME}. ${REMEDY}"
-            exit 1
-          fi
+          node tooling/ops/bridge-propose.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"

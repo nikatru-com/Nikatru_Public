@@ -15,9 +15,14 @@ on:
         required: true
         default: subscriptiontracker
         type: string
+      private_ref:
+        description: The PRIVATE ref this run builds, refs/heads/<branch> (generated; empty is the private main).
+        required: false
+        default: ''
+        type: string
 
 concurrency:
-  group: regen-gradle-verify-${{ inputs.app }}-${{ (github.event.client_payload.pr || github.event.client_payload.ref || github.ref) }}
+  group: regen-gradle-verify-${{ inputs.app }}-${{ (github.event.client_payload.pr || github.event.client_payload.ref || inputs.private_ref || 'refs/heads/main') }}
   cancel-in-progress: false
 
 permissions:
@@ -37,7 +42,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: ${{ env.NIKATRU_PRIVATE_REPO }}
-          ref: ${{ github.event.client_payload.event == 'pull_request' && format('refs/pull/{0}/merge', github.event.client_payload.pr) || github.event.client_payload.sha || 'main' }}
+          ref: ${{ github.event.client_payload.event == 'pull_request' && format('refs/pull/{0}/merge', github.event.client_payload.pr) || github.event.client_payload.sha || inputs.private_ref || 'main' }}
           ssh-key: ${{ secrets.PRIVATE_DEPLOY_KEY }}
           persist-credentials: false
       - name: Name the private commit (generated)
@@ -45,7 +50,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         env:
           NIKATRU_P_EVENT: ${{ github.event.client_payload.event || github.event_name }}
-          NIKATRU_P_REF: ${{ github.event.client_payload.ref || 'refs/heads/main' }}
+          NIKATRU_P_REF: ${{ github.event.client_payload.ref || inputs.private_ref || 'refs/heads/main' }}
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
@@ -75,19 +80,19 @@ jobs:
       - name: Refuse main, and a ref that is not a branch
         timeout-minutes: 1
         env:
-          REF: ${{ (github.event.client_payload.ref || github.ref) }}
+          REF: ${{ (github.event.client_payload.ref || inputs.private_ref || 'refs/heads/main') }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
           set -euo pipefail
           if [ "$REF" = refs/heads/main ]; then
-            echo "::error title=Refused::regenerate on the branch that changed the dependencies, never on main: gh workflow run regen-gradle-verify.yml --ref <branch> -f app=<app>."
+            echo "::error title=Refused::regenerate on the branch that changed the dependencies, never on main. In the public shell: gh workflow run regen-gradle-verify.yml -R <the shell> -f private_ref=refs/heads/<branch> -f app=<app>."
             exit 1
           fi
           case "$REF" in
             refs/heads/*) ;;
             *)
-              echo "::error title=Refused::'$REF' is not a branch: dispatch with --ref <branch>."
+              echo "::error title=Refused::'$REF' is not a branch: dispatch with -f private_ref=refs/heads/<branch> (the public shell)."
               exit 1
               ;;
           esac
@@ -98,7 +103,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: ${{ env.NIKATRU_PRIVATE_REPO }}
-          ref: ${{ (github.event.client_payload.ref || github.ref) }}
+          ref: ${{ (github.event.client_payload.ref || inputs.private_ref || 'refs/heads/main') }}
           ssh-key: ${{ secrets.PRIVATE_DEPLOY_KEY }}
           persist-credentials: false
         timeout-minutes: 5
@@ -144,7 +149,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: ${{ env.NIKATRU_PRIVATE_REPO }}
-          ref: ${{ (github.event.client_payload.ref || github.ref) }}
+          ref: ${{ (github.event.client_payload.ref || inputs.private_ref || 'refs/heads/main') }}
           ssh-key: ${{ secrets.PRIVATE_DEPLOY_KEY }}
           persist-credentials: false
         timeout-minutes: 5
@@ -153,7 +158,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         env:
           NIKATRU_P_EVENT: ${{ github.event.client_payload.event || github.event_name }}
-          NIKATRU_P_REF: ${{ github.event.client_payload.ref || 'refs/heads/main' }}
+          NIKATRU_P_REF: ${{ github.event.client_payload.ref || inputs.private_ref || 'refs/heads/main' }}
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}

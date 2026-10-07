@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: trufflehog-${{ (github.event.client_payload.pr || github.event.client_payload.ref || github.ref) }}
+  group: trufflehog-${{ (github.event.client_payload.pr || github.event.client_payload.ref || 'refs/heads/main') }}
   cancel-in-progress: false
 
 jobs:

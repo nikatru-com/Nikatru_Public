@@ -5,13 +5,19 @@ env:
 
 name: Apple signing expiry write
 
-run-name: "Apple signing expiry write · ${{ github.event.client_payload.sha }}"
+run-name: "Apple signing expiry write [${{ (github.event.client_payload.ref || inputs.private_ref || 'refs/heads/main') }}] · ${{ github.event.client_payload.sha }}"
 
 on:
   workflow_dispatch:
+    inputs:
+      private_ref:
+        description: The PRIVATE ref this run builds, refs/heads/<branch> (generated; empty is the private main).
+        required: false
+        default: ''
+        type: string
 
 concurrency:
-  group: apple-expiry-write-${{ (github.event.client_payload.pr || github.event.client_payload.ref || github.ref) }}
+  group: apple-expiry-write-${{ (github.event.client_payload.pr || github.event.client_payload.ref || inputs.private_ref || 'refs/heads/main') }}
   cancel-in-progress: false
 
 permissions:
@@ -20,7 +26,7 @@ permissions:
 jobs:
   write:
     name: Write the Apple signing expiry dates from App Store Connect
-    if: (github.event.client_payload.ref || github.ref) != 'refs/heads/main'
+    if: (github.event.client_payload.ref || inputs.private_ref || 'refs/heads/main') != 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -30,7 +36,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: ${{ env.NIKATRU_PRIVATE_REPO }}
-          ref: ${{ github.event.client_payload.event == 'pull_request' && format('refs/pull/{0}/merge', github.event.client_payload.pr) || github.event.client_payload.sha || 'main' }}
+          ref: ${{ github.event.client_payload.event == 'pull_request' && format('refs/pull/{0}/merge', github.event.client_payload.pr) || github.event.client_payload.sha || inputs.private_ref || 'main' }}
           ssh-key: ${{ secrets.PRIVATE_DEPLOY_KEY }}
           persist-credentials: false
       - name: Name the private commit (generated)
@@ -38,7 +44,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         env:
           NIKATRU_P_EVENT: ${{ github.event.client_payload.event || github.event_name }}
-          NIKATRU_P_REF: ${{ github.event.client_payload.ref || 'refs/heads/main' }}
+          NIKATRU_P_REF: ${{ github.event.client_payload.ref || inputs.private_ref || 'refs/heads/main' }}
           NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
           NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
@@ -78,25 +84,30 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name apple-expiry-write.write.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Commit the rows and push them to the dispatched branch
+      - name: Propose the rows into the dispatched branch
         env:
-          PUSH_TOKEN: ${{ github.token }}
+          NIKATRU_PROPOSE_PATHS: tooling/ops/register.json
+          NIKATRU_PROPOSE_BRANCH: chore/apple-expiry-${{ github.run_id }}
+          NIKATRU_PROPOSE_BASE: ${{ env.NIKATRU_REF_NAME }}
+          NIKATRU_PROPOSE_TITLE: 'ops: Apple signing expiry rows written from App Store Connect'
+          NIKATRU_PROPOSE_MESSAGE: |
+            ops: Apple signing expiry rows written from App Store Connect
+
+            Machine-written by apple-expiry-write.yml run ${{ github.run_id }} from App Store Connect,
+            by tooling/ops/check-apple-signing-expiry.mjs --write. Every date is the UTC date of the
+            expirationDate Apple returned for the id in tooling/apple-provisioning.json.
+          NIKATRU_PROPOSE_BODY: |
+            Rows: none - machine-written Apple signing expiry dates; the rows themselves are graded by ci-gate.
+
+            Written by `apple-expiry-write.yml` run `${{ github.run_id }}` from App Store Connect (`tooling/ops/check-apple-signing-expiry.mjs --write`, which re-judged the file before this was proposed). Merge it into the branch it targets once ci-gate is green.
+          NIKATRU_PROPOSE_ARTIFACT: proposal-apple-expiry-write.write
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+          NIKATRU_BRIDGE_PROPOSE_URL: https://gh-bridge.nikatru.workers.dev/propose
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          set -euo pipefail
-          if git diff --quiet -- tooling/ops/register.json; then
-            echo "::notice title=The Apple expiry rows already match App Store Connect::tooling/ops/register.json is byte-identical after the read, so there is nothing to commit."
-            exit 0
-          fi
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- tooling/ops/register.json
-          git commit -m "ops: Apple signing expiry rows written from App Store Connect" -m "Machine-written by apple-expiry-write.yml run ${GITHUB_RUN_ID} from App Store Connect, by tooling/ops/check-apple-signing-expiry.mjs --write. Every date is the UTC date of the expirationDate Apple returned for the id in tooling/apple-provisioning.json."
-          # why: the CODE repository, not the run's: in the public shell (gen-public-shell.mjs) the header sets
-          # NIKATRU_PRIVATE_REPO and GITHUB_REPOSITORY names the PUBLIC shell, so a push must never take it there.
-          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${NIKATRU_PRIVATE_REPO:-$GITHUB_REPOSITORY}.git" "HEAD:${NIKATRU_REF_NAME}"
-          echo "::notice title=Apple expiry rows pushed::One commit is on ${NIKATRU_REF_NAME}. A push by GITHUB_TOKEN starts no workflow, so open the pull request from that branch to run ci-gate on it."
+          node tooling/ops/bridge-propose.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name apple-expiry-write.write.4 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"

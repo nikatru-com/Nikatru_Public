@@ -18,7 +18,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: codeql-${{ (github.event.client_payload.event || github.event_name) == 'pull_request' && (github.event.client_payload.pr || github.event.client_payload.ref || github.ref) || github.run_id }}
+  group: codeql-${{ (github.event.client_payload.event || github.event_name) == 'pull_request' && (github.event.client_payload.pr || github.event.client_payload.ref || 'refs/heads/main') || github.run_id }}
   cancel-in-progress: ${{ (github.event.client_payload.event || github.event_name) == 'pull_request' }}
 
 jobs:

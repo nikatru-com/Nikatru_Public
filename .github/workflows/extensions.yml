@@ -54,8 +54,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: extensions-${{ (github.event.client_payload.pr || github.event.client_payload.ref || github.ref) }}
-  cancel-in-progress: ${{ (github.event.client_payload.pr || github.event.client_payload.ref || github.ref) != 'refs/heads/main' && !startsWith((github.event.client_payload.pr || github.event.client_payload.ref || github.ref), 'refs/tags/') }}
+  group: extensions-${{ (github.event.client_payload.pr || github.event.client_payload.ref || 'refs/heads/main') }}
+  cancel-in-progress: ${{ (github.event.client_payload.pr || github.event.client_payload.ref || 'refs/heads/main') != 'refs/heads/main' && !startsWith((github.event.client_payload.pr || github.event.client_payload.ref || 'refs/heads/main'), 'refs/tags/') }}
 
 defaults:
   run:
@@ -63,7 +63,7 @@ defaults:
 
 jobs:
   ci:
-    if: (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v'))) && ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.lane == 'ci' && !startsWith((github.event.client_payload.ref || github.ref), 'refs/tags/'))
+    if: (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v'))) && ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.lane == 'ci' && !startsWith((github.event.client_payload.ref || 'refs/heads/main'), 'refs/tags/'))
     uses: ./.github/workflows/extensions-ci.yml
     permissions:
       contents: read
@@ -73,7 +73,7 @@ jobs:
 
   e2e-discover:
     name: Discover e2e suites
-    if: (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v'))) && ((!startsWith((github.event.client_payload.ref || github.ref), 'refs/tags/') && ((github.event.client_payload.event || github.event_name) == 'schedule' || ((github.event.client_payload.event || github.event_name) == 'pull_request' && '' == 'run-e2e') || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.lane == 'e2e'))) && ((github.event.client_payload.event || github.event_name) != 'pull_request' || '' == 'run-e2e'))
+    if: (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v'))) && ((!startsWith((github.event.client_payload.ref || 'refs/heads/main'), 'refs/tags/') && ((github.event.client_payload.event || github.event_name) == 'schedule' || ((github.event.client_payload.event || github.event_name) == 'pull_request' && '' == 'run-e2e') || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.lane == 'e2e'))) && ((github.event.client_payload.event || github.event_name) != 'pull_request' || '' == 'run-e2e'))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -180,7 +180,7 @@ jobs:
   e2e-suite:
     name: e2e · ${{ matrix.suite.dir }}
     needs: e2e-discover
-    if: (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v'))) && ((!startsWith((github.event.client_payload.ref || github.ref), 'refs/tags/') && ((github.event.client_payload.event || github.event_name) == 'schedule' || ((github.event.client_payload.event || github.event_name) == 'pull_request' && '' == 'run-e2e') || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.lane == 'e2e'))) && (needs.e2e-discover.result == 'success' && needs.e2e-discover.outputs.count != '0'))
+    if: (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v'))) && ((!startsWith((github.event.client_payload.ref || 'refs/heads/main'), 'refs/tags/') && ((github.event.client_payload.event || github.event_name) == 'schedule' || ((github.event.client_payload.event || github.event_name) == 'pull_request' && '' == 'run-e2e') || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.lane == 'e2e'))) && (needs.e2e-discover.result == 'success' && needs.e2e-discover.outputs.count != '0'))
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -1019,7 +1019,7 @@ jobs:
   e2e-branded:
     name: e2e-branded · ${{ matrix.channel }} · ${{ matrix.suite.dir }}
     needs: e2e-discover
-    if: (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v'))) && ((!startsWith((github.event.client_payload.ref || github.ref), 'refs/tags/') && ((github.event.client_payload.event || github.event_name) == 'schedule' || ((github.event.client_payload.event || github.event_name) == 'pull_request' && '' == 'run-e2e') || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.lane == 'e2e'))) && (needs.e2e-discover.result == 'success' && needs.e2e-discover.outputs.count != '0'))
+    if: (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v'))) && ((!startsWith((github.event.client_payload.ref || 'refs/heads/main'), 'refs/tags/') && ((github.event.client_payload.event || github.event_name) == 'schedule' || ((github.event.client_payload.event || github.event_name) == 'pull_request' && '' == 'run-e2e') || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.lane == 'e2e'))) && (needs.e2e-discover.result == 'success' && needs.e2e-discover.outputs.count != '0'))
     runs-on: windows-2025
     timeout-minutes: 30
     permissions:
@@ -1159,7 +1159,7 @@ jobs:
           enableCrossOsArchive: true
 
   release:
-    if: (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v'))) && (startsWith((github.event.client_payload.ref || github.ref), 'refs/tags/') || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.lane == 'release'))
+    if: (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v'))) && (startsWith((github.event.client_payload.ref || 'refs/heads/main'), 'refs/tags/') || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.lane == 'release'))
     runs-on: ubuntu-24.04
     environment: production
     timeout-minutes: 45
@@ -1811,7 +1811,7 @@ jobs:
   store-publish:
     name: Store publish — the owner's word, on the tag's released bytes
     needs: release
-    if: (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v'))) && ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && startsWith((github.event.client_payload.ref || github.ref), 'refs/tags/') && inputs.lane == 'release' && inputs.dry_run != true)
+    if: (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v'))) && ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && startsWith((github.event.client_payload.ref || 'refs/heads/main'), 'refs/tags/') && inputs.lane == 'release' && inputs.dry_run != true)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: store-publish
@@ -1946,7 +1946,7 @@ jobs:
           fi
       - name: Submit to Firefox Add-ons (AMO)
         id: amo
-        if: (github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && startsWith((github.event.client_payload.ref || github.ref), 'refs/tags/') && inputs.dry_run != true && inputs.confirm == 'SUBMIT-TO-FIREFOX-AMO'
+        if: (github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && startsWith((github.event.client_payload.ref || 'refs/heads/main'), 'refs/tags/') && inputs.dry_run != true && inputs.confirm == 'SUBMIT-TO-FIREFOX-AMO'
         shell: bash
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
@@ -2010,7 +2010,7 @@ jobs:
           fi
       - name: Submit to the Chrome Web Store
         id: cws
-        if: (github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && startsWith((github.event.client_payload.ref || github.ref), 'refs/tags/') && inputs.dry_run != true && inputs.confirm == 'SUBMIT-TO-CHROME-WEB-STORE'
+        if: (github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && startsWith((github.event.client_payload.ref || 'refs/heads/main'), 'refs/tags/') && inputs.dry_run != true && inputs.confirm == 'SUBMIT-TO-CHROME-WEB-STORE'
         shell: bash
         env:
           CWS_SERVICE_ACCOUNT_JSON: ${{ secrets.CWS_SERVICE_ACCOUNT_JSON }}
@@ -2065,7 +2065,7 @@ jobs:
           fi
       - name: Submit to Microsoft Edge Add-ons
         id: edge
-        if: (github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && startsWith((github.event.client_payload.ref || github.ref), 'refs/tags/') && inputs.dry_run != true && inputs.confirm == 'SUBMIT-TO-EDGE-ADDONS'
+        if: (github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && startsWith((github.event.client_payload.ref || 'refs/heads/main'), 'refs/tags/') && inputs.dry_run != true && inputs.confirm == 'SUBMIT-TO-EDGE-ADDONS'
         shell: bash
         env:
           EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
@@ -2371,7 +2371,7 @@ jobs:
           STORE_KEEPALIVE: ${{ needs.store-key-keepalive.result }}
           DRY_RUN: ${{ inputs.dry_run }}
           EVENT: ${{ (github.event.client_payload.event || github.event_name) }}
-          REF: ${{ (github.event.client_payload.ref || github.ref) }}
+          REF: ${{ (github.event.client_payload.ref || 'refs/heads/main') }}
           ACTION: ${{ github.event.action }}
           LABEL: ${{ '' }}
           LANE: ${{ inputs.lane }}

@@ -5,7 +5,7 @@ env:
 
 name: Update goldens
 
-run-name: "Update goldens · ${{ github.event.client_payload.sha }}"
+run-name: "Update goldens [${{ (inputs.ref) }}] · ${{ github.event.client_payload.sha }}"
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ on:
         required: true
         type: string
       mode:
-        description: artifact keeps the PNGs in the bridge's private home for tooling/ops/apply-goldens.mjs; commit is refused.
+        description: artifact keeps the PNGs in the bridge's private home for tooling/ops/apply-goldens.mjs; commit has the bridge open a pull request of them into the branch.
         required: true
         default: artifact
         type: choice
@@ -88,7 +88,6 @@ jobs:
         timeout-minutes: 1
         env:
           REF: ${{ inputs.ref }}
-          MODE: ${{ inputs.mode }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -99,10 +98,6 @@ jobs:
           fi
           if ! printf '%s' "$REF" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._/-]*$' || ! git check-ref-format --branch "$REF" > /dev/null; then
             echo "::error title=Refused::ref '$REF' is not a plain branch name."
-            exit 1
-          fi
-          if [ "$MODE" != "artifact" ]; then
-            echo "::error title=Refused: mode=$MODE cannot push from the public shell::The shell holds no credential that writes the private repository (its GITHUB_TOKEN writes only the shell; the deploy key is read-only). Dispatch again with mode=artifact, then on Box A run: node tooling/ops/apply-goldens.mjs --run <that run's id> --ref $REF"
             exit 1
           fi
           NIKATRU_QUIET_EOF
@@ -122,6 +117,7 @@ jobs:
         env:
           REF: ${{ inputs.ref }}
           TESTS: ${{ inputs.tests }}
+          MODE: ${{ inputs.mode }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -142,6 +138,11 @@ jobs:
           # not after thirty minutes of Flutter.
           if [ -n "${NIKATRU_PRIVATE_REPO:-}" ] && [ ! -f tooling/ops/bridge-artifact.mjs ]; then
             echo "::error title=Refused::'$REF' has no tooling/ops/bridge-artifact.mjs, which stores the PNGs in the bridge's private home. Merge main into the branch, then dispatch again."
+            exit 1
+          fi
+          # commit mode runs the BRANCH's tooling/ops/bridge-propose.mjs (the proposal step below).
+          if [ "$MODE" = "commit" ] && [ ! -f tooling/ops/bridge-propose.mjs ]; then
+            echo "::error title=Refused::'$REF' has no tooling/ops/bridge-propose.mjs, which has the bridge open the pull request. Merge main into the branch, or dispatch with mode=artifact."
             exit 1
           fi
           read -r -a tests <<< "$TESTS"
@@ -171,6 +172,8 @@ jobs:
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name update-goldens.regenerate.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - uses: ./.github/actions/setup-flutter
         timeout-minutes: 10
+        with:
+          cache: 'false'
       - name: Resolve the workspace
         timeout-minutes: 5
         run: |
@@ -241,6 +244,7 @@ jobs:
           echo "Changed golden PNGs: $count"
           cat "$RUNNER_TEMP/changed.txt"
           echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "paths=$(tr '\n' ' ' < "$RUNNER_TEMP/changed.txt")" >> "$GITHUB_OUTPUT"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name update-goldens.regenerate.8 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
@@ -299,6 +303,33 @@ jobs:
           BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
           NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
         run: node tooling/ops/bridge-artifact.mjs upload
+      - name: Propose the PNGs into the branch (pull request)
+        if: steps.delta.outputs.count != '0' && inputs.mode == 'commit'
+        timeout-minutes: 5
+        env:
+          NIKATRU_PROPOSE_PATHS: ${{ steps.delta.outputs.paths }}
+          NIKATRU_PROPOSE_BRANCH: goldens/${{ github.run_id }}
+          NIKATRU_PROPOSE_BASE: ${{ inputs.ref }}
+          NIKATRU_PROPOSE_TITLE: 'goldens: re-rendered on Linux by shell run ${{ github.run_id }}'
+          NIKATRU_PROPOSE_MESSAGE: |
+            goldens: re-rendered on Linux by shell run ${{ github.run_id }}
+
+            Tests: ${{ inputs.tests }}
+          NIKATRU_PROPOSE_BODY: |
+            Rows: none - goldens re-rendered on Linux; the branch's own pull request carries the change.
+
+            Re-rendered by `update-goldens.yml` run `${{ github.run_id }}` on the sha this pull request is based on, and the same tests passed WITHOUT `--update-goldens` after it. Tests: `${{ inputs.tests }}`. **Look at the images in the Files changed tab**, then merge this into the branch.
+          NIKATRU_PROPOSE_ARTIFACT: proposal-update-goldens.regenerate
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+          NIKATRU_BRIDGE_PROPOSE_URL: https://gh-bridge.nikatru.workers.dev/propose
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          node tooling/ops/bridge-propose.mjs
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name update-goldens.regenerate.12 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Nothing changed
         if: steps.delta.outputs.count == '0'
         timeout-minutes: 1
@@ -308,7 +339,7 @@ jobs:
           echo "::notice title=No golden changed::The re-render on Linux produced the committed PNGs byte for byte, and the tests pass. Nothing to upload or apply."
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name update-goldens.regenerate.12 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name update-goldens.regenerate.13 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
         continue-on-error: true

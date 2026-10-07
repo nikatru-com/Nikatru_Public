@@ -24,7 +24,7 @@ permissions:
 jobs:
   watch:
     name: Laptop state, PR board, run ledger
-    if: (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.event != 'pull_request')) && github.event_name == 'workflow_dispatch' && ((github.event.client_payload.ref || github.ref) == 'refs/heads/main')
+    if: (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.event != 'pull_request')) && github.event_name == 'workflow_dispatch' && ((github.event.client_payload.ref || 'refs/heads/main') == 'refs/heads/main')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -98,7 +98,7 @@ jobs:
 
   e2e-after-deploy:
     name: E2E after a web deploy
-    if: (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.event != 'pull_request')) && github.event_name == 'workflow_dispatch' && ((github.event.client_payload.ref || github.ref) == 'refs/heads/main')
+    if: (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.event != 'pull_request')) && github.event_name == 'workflow_dispatch' && ((github.event.client_payload.ref || 'refs/heads/main') == 'refs/heads/main')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

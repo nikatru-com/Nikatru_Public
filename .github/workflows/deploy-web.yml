@@ -129,7 +129,7 @@ jobs:
         app: ${{ fromJSON(needs.prepare.outputs.apps) }}
     concurrency:
       group: deploy-web-${{ matrix.app }}
-      cancel-in-progress: ${{ (github.event.client_payload.pr || github.event.client_payload.ref || github.ref) != 'refs/heads/main' }}
+      cancel-in-progress: ${{ (github.event.client_payload.pr || github.event.client_payload.ref || 'refs/heads/main') != 'refs/heads/main' }}
     defaults:
       run:
         working-directory: apps/${{ matrix.app }}
@@ -389,7 +389,7 @@ jobs:
       deployments: write
     concurrency:
       group: deploy-web-nikatru-site
-      cancel-in-progress: ${{ (github.event.client_payload.pr || github.event.client_payload.ref || github.ref) != 'refs/heads/main' }}
+      cancel-in-progress: ${{ (github.event.client_payload.pr || github.event.client_payload.ref || 'refs/heads/main') != 'refs/heads/main' }}
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -537,7 +537,7 @@ jobs:
       deployments: write
     concurrency:
       group: deploy-web-rajasekarselvam-site
-      cancel-in-progress: ${{ (github.event.client_payload.pr || github.event.client_payload.ref || github.ref) != 'refs/heads/main' }}
+      cancel-in-progress: ${{ (github.event.client_payload.pr || github.event.client_payload.ref || 'refs/heads/main') != 'refs/heads/main' }}
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -660,7 +660,7 @@ jobs:
       deployments: write
     concurrency:
       group: deploy-web-status-site
-      cancel-in-progress: ${{ (github.event.client_payload.pr || github.event.client_payload.ref || github.ref) != 'refs/heads/main' }}
+      cancel-in-progress: ${{ (github.event.client_payload.pr || github.event.client_payload.ref || 'refs/heads/main') != 'refs/heads/main' }}
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

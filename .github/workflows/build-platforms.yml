@@ -148,7 +148,7 @@ jobs:
             echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - name: This lane owns the tag
-        if: (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag'
+        if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag'
         env:
           REF_NAME: ${{ env.NIKATRU_REF_NAME }}
         run: |
@@ -159,10 +159,10 @@ jobs:
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.prepare.2 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The tag must name the version the app declares
-        if: (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag'
+        if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag'
         env:
           REF_NAME: ${{ env.NIKATRU_REF_NAME }}
-          REF_TYPE: ${{ (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') }}
+          REF_TYPE: ${{ (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -174,7 +174,7 @@ jobs:
         id: workspace
         env:
           REF_NAME: ${{ env.NIKATRU_REF_NAME }}
-          REF_TYPE: ${{ (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') }}
+          REF_TYPE: ${{ (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -1412,13 +1412,13 @@ jobs:
             echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - name: The release directory, or the declared empty
-        if: ${{ !((startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag' || needs.release.outputs.nothing_owed != matrix.app) }}
+        if: ${{ !((startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag' || needs.release.outputs.nothing_owed != matrix.app) }}
         env:
           APP: ${{ matrix.app }}
         run: echo "::notice title=Nothing to attest (${APP})::the release job staged nothing and owes nothing on this non-tag run, so it handed over no directory"
       - name: Restore the release-dist-${{ matrix.app }} hand-off (generated)
         id: nikatru-restore-5
-        if: (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag' || needs.release.outputs.nothing_owed != matrix.app
+        if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag' || needs.release.outputs.nothing_owed != matrix.app
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .nikatru-handoff/x
@@ -1427,7 +1427,7 @@ jobs:
           enableCrossOsArchive: true
           fail-on-cache-miss: true
       - name: Place the release-dist-${{ matrix.app }} hand-off where download-artifact put it (generated)
-        if: ${{ ((startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag' || needs.release.outputs.nothing_owed != matrix.app) && steps.nikatru-restore-5.outputs.cache-matched-key != '' }}
+        if: ${{ ((startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag' || needs.release.outputs.nothing_owed != matrix.app) && steps.nikatru-restore-5.outputs.cache-matched-key != '' }}
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
@@ -1437,13 +1437,13 @@ jobs:
           cp -a .nikatru-handoff/x/. "$NIKATRU_TO/"
           rm -rf .nikatru-handoff/x
       - name: Attest the build provenance of every release file
-        if: (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag' || needs.release.outputs.nothing_owed != matrix.app
+        if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag' || needs.release.outputs.nothing_owed != matrix.app
         id: attest
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
         with:
           subject-path: dist/*
       - name: Verify every release file's provenance
-        if: (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag' || needs.release.outputs.nothing_owed != matrix.app
+        if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag' || needs.release.outputs.nothing_owed != matrix.app
         timeout-minutes: 10
         env:
           GH_TOKEN: ${{ github.token }}
@@ -1516,7 +1516,7 @@ jobs:
             echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - name: Check out the private tree (generated)
-        if: (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag'
+        if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: ${{ env.NIKATRU_PRIVATE_REPO }}
@@ -1525,7 +1525,7 @@ jobs:
           persist-credentials: false
       - name: Restore the symbols-${{ matrix.app }}-linux-android hand-off (generated)
         id: nikatru-restore-6
-        if: (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag'
+        if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .nikatru-handoff/x
@@ -1533,7 +1533,7 @@ jobs:
           restore-keys: nikatru-handoff-symbols-${{ matrix.app }}-linux-android-${{ github.run_id }}-
           enableCrossOsArchive: true
       - name: Place the symbols-${{ matrix.app }}-linux-android hand-off where download-artifact put it (generated)
-        if: ${{ ((startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag') && steps.nikatru-restore-6.outputs.cache-matched-key != '' }}
+        if: ${{ ((startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag') && steps.nikatru-restore-6.outputs.cache-matched-key != '' }}
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
@@ -1544,7 +1544,7 @@ jobs:
           rm -rf .nikatru-handoff/x
       - name: Restore the symbols-${{ matrix.app }}-windows hand-off (generated)
         id: nikatru-restore-7
-        if: (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag'
+        if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .nikatru-handoff/x
@@ -1552,7 +1552,7 @@ jobs:
           restore-keys: nikatru-handoff-symbols-${{ matrix.app }}-windows-${{ github.run_id }}-
           enableCrossOsArchive: true
       - name: Place the symbols-${{ matrix.app }}-windows hand-off where download-artifact put it (generated)
-        if: ${{ ((startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag') && steps.nikatru-restore-7.outputs.cache-matched-key != '' }}
+        if: ${{ ((startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag') && steps.nikatru-restore-7.outputs.cache-matched-key != '' }}
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
@@ -1563,7 +1563,7 @@ jobs:
           rm -rf .nikatru-handoff/x
       - name: Restore the symbols-${{ matrix.app }}-apple hand-off (generated)
         id: nikatru-restore-8
-        if: (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag'
+        if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .nikatru-handoff/x
@@ -1571,7 +1571,7 @@ jobs:
           restore-keys: nikatru-handoff-symbols-${{ matrix.app }}-apple-${{ github.run_id }}-
           enableCrossOsArchive: true
       - name: Place the symbols-${{ matrix.app }}-apple hand-off where download-artifact put it (generated)
-        if: ${{ ((startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag') && steps.nikatru-restore-8.outputs.cache-matched-key != '' }}
+        if: ${{ ((startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag') && steps.nikatru-restore-8.outputs.cache-matched-key != '' }}
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
@@ -1581,7 +1581,7 @@ jobs:
           cp -a .nikatru-handoff/x/. "$NIKATRU_TO/"
           rm -rf .nikatru-handoff/x
       - name: Copy this tag's symbols to the release store (R2)
-        if: (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag'
+        if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag'
         env:
           APP: ${{ matrix.app }}
           RUN_NUMBER: ${{ github.run_number }}
@@ -1708,7 +1708,7 @@ jobs:
         env:
           APP: ${{ matrix.app }}
           REF_NAME: ${{ env.NIKATRU_REF_NAME }}
-          REF_TYPE: ${{ (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') }}
+          REF_TYPE: ${{ (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') }}
         run: |
           set -euo pipefail
           if [ "$REF_TYPE" = "tag" ]; then
@@ -1834,7 +1834,7 @@ jobs:
           APP: ${{ matrix.app }}
         run: node tooling/ci/release-manifest.mjs --emit-environments dist --app "$APP"
       - name: Publish the GitHub Release (tag pushes only)
-        if: (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag'
+        if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -1862,7 +1862,7 @@ jobs:
           release_url="$(gh release view "$RELEASE_TAG" --json url --jq .url)"
           echo "RELEASE_URL=${release_url}" >> "$GITHUB_ENV"
       - name: The release must carry the assets this job just uploaded
-        if: (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag'
+        if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -1871,7 +1871,7 @@ jobs:
           echo "⬜ [14]O-7 reading back the release ${REPO}@${RELEASE_TAG}"
           node tooling/ops/post-deploy-smoke.mjs --release-repo "$REPO" --release-tag "$RELEASE_TAG" --release-manifest dist/SHA256SUMS
       - name: Record what shipped, per channel this release is the origin for
-        if: (startsWith(github.event.client_payload.ref || github.ref, 'refs/tags/') && 'tag' || 'branch') == 'tag'
+        if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
