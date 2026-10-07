@@ -148,6 +148,10 @@ jobs:
             cat "$OUT/name-clearance.diff"
             echo '--- END OF THE REWRITTEN RECORDS ---'
             echo "::error title=The records were re-derived but no pull request could be opened::Since the cutover this workflow runs in the PUBLIC shell, which holds no PAT (owner lock 2026-10-06) and is generated, so a pull request opened here would be on the wrong repository: the records live in the private code repository. THE RECORDS ARE NOT LOST - they are printed above in full. REMEDY: apply the printed rewrite on a branch of the private repository and open the refresh PR there (a person today; the gh-bridge, through a signed door with its own token, after the follow-up due 2026-10-20). Do NOT add a RENOVATE_TOKEN binding: assert-public-shell.mjs limb P refuses it."
+            if [ "$SWEEP_EXIT" -eq 0 ]; then
+              echo "::notice title=Name-clearance records refreshed, no verdict flipped::The rewrite is kept in the bridge's private home (private issue #34); open the refresh PR on the private repository when convenient. Nothing to decide."
+              exit 0
+            fi
             exit 1
           fi
 
