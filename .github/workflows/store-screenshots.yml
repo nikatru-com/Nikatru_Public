@@ -94,26 +94,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.gate.2 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-store-screenshots.gate.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-store-screenshots.gate.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-store-screenshots.gate.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   capture:
     name: Capture the Play phone and tablet screenshot sets (live)
@@ -489,26 +481,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture.24 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-store-screenshots.capture.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-store-screenshots.capture.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-store-screenshots.capture.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   capture-linux:
     name: Capture the Snap Store desktop screenshot set (live)
@@ -865,26 +849,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-linux.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-store-screenshots.capture-linux.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-store-screenshots.capture-linux.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-store-screenshots.capture-linux.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   capture-desktop-native:
     name: Capture the native desktop screenshot set (live)
@@ -1249,26 +1225,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-desktop-native.22 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-store-screenshots.capture-desktop-native.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-store-screenshots.capture-desktop-native.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-store-screenshots.capture-desktop-native.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   capture-ios:
     name: Capture the iOS screenshot sets — iPhone and iPad (live)
@@ -1664,23 +1632,15 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.24 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-store-screenshots.capture-ios.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-store-screenshots.capture-ios.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-store-screenshots.capture-ios.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload

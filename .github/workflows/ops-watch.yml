@@ -275,26 +275,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.heartbeats.11 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.heartbeats.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.heartbeats.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.heartbeats.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   status:
     name: Every enumerated surface produced its expected output
@@ -356,26 +348,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.status.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.status.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.status.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.status.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   supabase-drift:
     name: The live auth config still matches what the repo recorded
@@ -461,26 +445,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.supabase-drift.4 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.supabase-drift.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.supabase-drift.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.supabase-drift.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   prod-provenance:
     name: Every row in production traces to a released build
@@ -552,26 +528,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.prod-provenance.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.prod-provenance.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.prod-provenance.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.prod-provenance.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   pages-deployments:
     name: The Cloudflare Pages builds nobody else can see actually landed
@@ -691,26 +659,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.pages-deployments.5 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.pages-deployments.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.pages-deployments.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.pages-deployments.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   runner-budget:
     name: Actions quota cannot silently stop the scheduled proofs
@@ -781,26 +741,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.runner-budget.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.runner-budget.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.runner-budget.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.runner-budget.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   glitchtip:
     name: The live ops half — monitors, alarm chains, provider parity, GCP scope
@@ -1035,26 +987,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.12 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.glitchtip.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.glitchtip.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.glitchtip.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   edge-shield:
     name: The edge shield is still in front of Box B and Box C
@@ -1200,26 +1144,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.edge-shield.7 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.edge-shield.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.edge-shield.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.edge-shield.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   failure-ledger:
     name: Failed-run ledger and guard yield (weekly; red pages the ops-watch issue)
@@ -1342,26 +1278,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.failure-ledger.7 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.failure-ledger.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.failure-ledger.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.failure-ledger.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   renovate-backlog:
     name: The Renovate queue drains at least as fast as it fills
@@ -1430,26 +1358,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.renovate-backlog.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.renovate-backlog.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.renovate-backlog.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.renovate-backlog.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   code-scanning-age:
     name: No high or critical code-scanning alert stands untriaged past its window
@@ -1531,26 +1451,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.code-scanning-age.4 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.code-scanning-age.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.code-scanning-age.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.code-scanning-age.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   tech-currency:
     name: What the pipeline runs on is not being retired by its vendors
@@ -1617,26 +1529,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.tech-currency.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.tech-currency.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.tech-currency.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.tech-currency.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   alert:
     name: Open or refresh the ops-watch issue
@@ -1740,26 +1644,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.alert.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.alert.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.alert.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.alert.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
 
   digest:
     name: Weekly digest
@@ -1898,23 +1794,15 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.digest.4 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Hand this job's red detail to the report job, sealed (generated)
-        id: nikatru-handoff
+      - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
+        continue-on-error: true
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
-          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.digest.${{ strategy.job-index }}
-        run: |
-          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
-            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
-            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
-          fi
-      - name: Save the hand-off (generated)
-        if: always() && steps.nikatru-handoff.outputs.has == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-detail
-          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-ops-watch.digest.${{ strategy.job-index }}
-          enableCrossOsArchive: true
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.digest.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
