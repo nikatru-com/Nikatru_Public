@@ -205,6 +205,8 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.android.6 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - uses: ./.github/actions/enable-kvm
+        if: env.PROOF_NEEDS_DEVICE == 'true'
       - name: Boot an emulator
         if: env.PROOF_NEEDS_DEVICE == 'true'
         env:
@@ -213,22 +215,6 @@ jobs:
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
           set -euo pipefail
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          # why: `trigger` only QUEUES the event. Run 36533541325 checked before
-          # the rule applied, failed, then `ls` in the same branch printed
-          # crw-rw-rw-. Settle the queue, then allow the mode a few seconds.
-          sudo udevadm settle --timeout=30
-          for _ in 1 2 3 4 5; do
-            [ -r /dev/kvm ] && [ -w /dev/kvm ] && break
-            sleep 2
-          done
-          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
-            ls -l /dev/kvm || true
-            echo "::error title=Emulator::/dev/kvm is not usable by this user; an x86_64 emulator without KVM does not boot inside the ceiling"
-            exit 1
-          fi
           sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           export ANDROID_AVD_HOME="${RUNNER_TEMP}/avd"
           echo "ANDROID_AVD_HOME=${ANDROID_AVD_HOME}" >> "$GITHUB_ENV"
@@ -266,7 +252,7 @@ jobs:
           echo "emulator booted at ${SECONDS}s"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.android.7 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.android.8 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Provision throwaway confirmed user
         id: user
         env:
@@ -278,7 +264,7 @@ jobs:
           node tooling/e2e/provision_user.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.android.8 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.android.9 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The proof — sign in, the gated calls, sign out, the callback
         id: proof
         env:
@@ -295,7 +281,7 @@ jobs:
           node tooling/e2e/native_auth_proof.mjs --app "$APP" --target android --device emulator-5554 --log "$E2E_PROOF_LOG" --callback --sign-in token --pending-flows "$PENDING_FLOWS" --notification-tap
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.android.9 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.android.10 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Purge the throwaway user
         if: always() && steps.user.outcome != 'skipped'
         env:
@@ -313,7 +299,7 @@ jobs:
           node tooling/e2e/purge.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.android.10 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.android.11 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
         continue-on-error: true
@@ -1054,6 +1040,8 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.android-oauth-return.5 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - uses: ./.github/actions/enable-kvm
+        if: env.PROOF_NEEDS_DEVICE == 'true'
       - name: Boot an emulator
         if: env.PROOF_NEEDS_DEVICE == 'true'
         env:
@@ -1062,22 +1050,6 @@ jobs:
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
           set -euo pipefail
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          # why: `trigger` only QUEUES the event. Run 36533541325 checked before
-          # the rule applied, failed, then `ls` in the same branch printed
-          # crw-rw-rw-. Settle the queue, then allow the mode a few seconds.
-          sudo udevadm settle --timeout=30
-          for _ in 1 2 3 4 5; do
-            [ -r /dev/kvm ] && [ -w /dev/kvm ] && break
-            sleep 2
-          done
-          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
-            ls -l /dev/kvm || true
-            echo "::error title=Emulator::/dev/kvm is not usable by this user; an x86_64 emulator without KVM does not boot inside the ceiling"
-            exit 1
-          fi
           sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           export ANDROID_AVD_HOME="${RUNNER_TEMP}/avd"
           echo "ANDROID_AVD_HOME=${ANDROID_AVD_HOME}" >> "$GITHUB_ENV"
@@ -1115,7 +1087,7 @@ jobs:
           echo "emulator booted at ${SECONDS}s"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.android-oauth-return.6 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.android-oauth-return.7 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The OAuth return — adb hands the app its callback
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -1126,7 +1098,7 @@ jobs:
           node tooling/e2e/native_auth_proof.mjs --app "$APP" --target android --device emulator-5554 --log native-oauth-return.log --oauth-return
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.android-oauth-return.7 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.android-oauth-return.8 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
         continue-on-error: true
