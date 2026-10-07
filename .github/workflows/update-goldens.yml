@@ -19,13 +19,13 @@ on:
         required: true
         type: string
       mode:
-        description: commit pushes the changed PNGs to ref; artifact only uploads them.
+        description: artifact keeps the PNGs in the bridge's private home for tooling/ops/apply-goldens.mjs; commit is refused.
         required: true
-        default: commit
+        default: artifact
         type: choice
         options:
-          - commit
           - artifact
+          - commit
 
 concurrency:
   group: update-goldens-${{ inputs.ref }}
@@ -88,6 +88,7 @@ jobs:
         timeout-minutes: 1
         env:
           REF: ${{ inputs.ref }}
+          MODE: ${{ inputs.mode }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -100,6 +101,10 @@ jobs:
             echo "::error title=Refused::ref '$REF' is not a plain branch name."
             exit 1
           fi
+          if [ "$MODE" != "artifact" ]; then
+            echo "::error title=Refused: mode=$MODE cannot push from the public shell::The shell holds no credential that writes the private repository (its GITHUB_TOKEN writes only the shell; the deploy key is read-only). Dispatch again with mode=artifact, then on Box A run: node tooling/ops/apply-goldens.mjs --run <that run's id> --ref $REF"
+            exit 1
+          fi
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name update-goldens.regenerate.1 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
@@ -107,7 +112,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: ${{ env.NIKATRU_PRIVATE_REPO }}
-          ref: ${{ inputs.ref }}
+          ref: refs/heads/${{ inputs.ref }}
           ssh-key: ${{ secrets.PRIVATE_DEPLOY_KEY }}
           persist-credentials: false
         timeout-minutes: 5
@@ -121,12 +126,22 @@ jobs:
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
           set -euo pipefail
-          # The ref must be a BRANCH at exactly what was checked out, or the
-          # commit job would push onto something other than what was tested.
-          remote="$(git ls-remote --heads origin "refs/heads/$REF" | cut -f1)"
+          # The ref must be a BRANCH at exactly what was checked out: the tip the
+          # checkout fetched for refs/heads/$REF, on a local branch of that name.
+          # apply-goldens.mjs re-reads the live tip before it pushes, so a branch
+          # that moves after this point is refused there, never overwritten.
+          tip="$(git rev-parse --verify --quiet "refs/remotes/origin/$REF^{commit}" || true)"
           head="$(git rev-parse HEAD)"
-          if [ -z "$remote" ] || [ "$remote" != "$head" ]; then
-            echo "::error title=Refused::'$REF' is not a branch on origin at the checked-out commit ($head; origin has '${remote:-nothing}')."
+          branch="$(git symbolic-ref --quiet --short HEAD || true)"
+          if [ -z "$tip" ] || [ "$tip" != "$head" ] || [ "$branch" != "$REF" ]; then
+            echo "::error title=Refused::'$REF' is not a branch checked out at its fetched tip (HEAD $head on '${branch:-a detached HEAD}'; origin/$REF is '${tip:-nothing}')."
+            exit 1
+          fi
+          # The shell's private upload runs the BRANCH's tooling/ops/bridge-artifact.mjs
+          # (gen-public-shell.mjs); a branch cut before it existed is refused now,
+          # not after thirty minutes of Flutter.
+          if [ -n "${NIKATRU_PRIVATE_REPO:-}" ] && [ ! -f tooling/ops/bridge-artifact.mjs ]; then
+            echo "::error title=Refused::'$REF' has no tooling/ops/bridge-artifact.mjs, which stores the PNGs in the bridge's private home. Merge main into the branch, then dispatch again."
             exit 1
           fi
           read -r -a tests <<< "$TESTS"
@@ -247,6 +262,10 @@ jobs:
       - name: Stage the changed PNGs at their repository paths
         if: steps.delta.outputs.count != '0'
         timeout-minutes: 2
+        env:
+          REF: ${{ inputs.ref }}
+          TESTS: ${{ inputs.tests }}
+          SHA: ${{ steps.plan.outputs.sha }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -256,32 +275,37 @@ jobs:
             mkdir -p "$RUNNER_TEMP/goldens/$(dirname "$f")"
             cp -- "$f" "$RUNNER_TEMP/goldens/$f"
           done < "$RUNNER_TEMP/changed.txt"
+          read -r -a tests <<< "$TESTS"
+          {
+            printf 'run %s\n' "$GITHUB_RUN_ID"
+            printf 'attempt %s\n' "$GITHUB_RUN_ATTEMPT"
+            printf 'ref %s\n' "$REF"
+            printf 'sha %s\n' "$SHA"
+            for t in "${tests[@]}"; do printf 'test %s\n' "$t"; done
+            while IFS= read -r f; do printf 'file %s %s\n' "$(sha256sum < "$f" | cut -c1-64)" "$f"; done < "$RUNNER_TEMP/changed.txt"
+          } > "$RUNNER_TEMP/goldens/goldens-run.txt"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name update-goldens.regenerate.10 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Stage goldens-${{ github.run_id }} for this run's later jobs (generated)
-        id: nikatru-stage-1
+      - name: Store goldens-${{ github.run_id }} in the bridge's private home (generated)
         if: steps.delta.outputs.count != '0'
+        timeout-minutes: 5
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
           NIKATRU_PATHS: ${{ runner.temp }}/goldens
+          NIKATRU_ARTIFACT_NAME: goldens-${{ github.run_id }}
           NIKATRU_IF_NO_FILES: error
-        run: node tooling/ci/shell-handoff.mjs stage
-      - name: Hand off goldens-${{ github.run_id }} to this run's later jobs (generated)
-        if: ${{ (steps.delta.outputs.count != '0') && steps.nikatru-stage-1.outputs.has == 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-handoff/x
-          key: nikatru-handoff-goldens-${{ github.run_id }}-${{ github.run_id }}-${{ github.run_attempt }}
-          enableCrossOsArchive: true
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
       - name: Nothing changed
         if: steps.delta.outputs.count == '0'
         timeout-minutes: 1
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          echo "::notice title=No golden changed::The re-render on Linux produced the committed PNGs byte for byte, and the tests pass. Nothing to upload or commit."
+          echo "::notice title=No golden changed::The re-render on Linux produced the committed PNGs byte for byte, and the tests pass. Nothing to upload or apply."
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name update-goldens.regenerate.12 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
@@ -293,149 +317,6 @@ jobs:
         env:
           NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
           NIKATRU_ARTIFACT_NAME: report-detail-update-goldens.regenerate.${{ strategy.job-index }}
-          NIKATRU_IF_NO_FILES: ignore
-          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
-          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
-        run: node tooling/ops/bridge-artifact.mjs upload
-
-  commit:
-    name: Commit the PNGs and push them to the branch
-    needs: regenerate
-    if: inputs.mode == 'commit' && needs.regenerate.outputs.count != '0'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - name: Check out the private tree (generated)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          repository: ${{ env.NIKATRU_PRIVATE_REPO }}
-          ref: ${{ needs.regenerate.outputs.sha }}
-          ssh-key: ${{ secrets.PRIVATE_DEPLOY_KEY }}
-          persist-credentials: false
-        timeout-minutes: 5
-      - name: Name the private commit (generated)
-        shell: bash
-        working-directory: ${{ github.workspace }}
-        env:
-          NIKATRU_P_EVENT: ${{ github.event.client_payload.event || github.event_name }}
-          NIKATRU_P_REF: ${{ github.event.client_payload.ref || 'refs/heads/main' }}
-          NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
-          NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
-          NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
-          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
-          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
-          NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
-        run: |
-          if [ "$NIKATRU_P_EVENT" = pull_request ]; then
-            set -- $(git cat-file -p HEAD | sed -n 's/^parent //p')
-            if [ "${2:-}" != "$NIKATRU_P_SHA" ]; then
-              echo "::error::refs/pull/$NIKATRU_P_PR/merge is not yet the merge of the dispatched head $NIKATRU_P_SHA (its second parent is ${2:-none}); GitHub recomputes it after a push — re-run this job"
-              exit 1
-            fi
-          fi
-          {
-            echo "NIKATRU_SHA=$(git rev-parse HEAD)"
-            echo "NIKATRU_HEAD_SHA=${NIKATRU_P_SHA:-$(git rev-parse HEAD)}"
-            echo "NIKATRU_EVENT_NAME=$NIKATRU_P_EVENT"
-            echo "NIKATRU_REF=$NIKATRU_P_REF"
-            echo "NIKATRU_REF_NAME=${NIKATRU_P_REF#refs/*/}"
-            echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
-            echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
-            echo "NIKATRU_PR=$NIKATRU_P_PR"
-            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
-            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
-          } >> "$GITHUB_ENV"
-      - name: Restore the goldens-${{ github.run_id }} hand-off (generated)
-        id: nikatru-restore-2
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .nikatru-handoff/x
-          key: nikatru-handoff-goldens-${{ github.run_id }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: nikatru-handoff-goldens-${{ github.run_id }}-${{ github.run_id }}-
-          enableCrossOsArchive: true
-          fail-on-cache-miss: true
-      - name: Place the goldens-${{ github.run_id }} hand-off where download-artifact put it (generated)
-        if: ${{ (success()) && steps.nikatru-restore-2.outputs.cache-matched-key != '' }}
-        shell: bash
-        working-directory: ${{ github.workspace }}
-        env:
-          NIKATRU_TO: ${{ runner.temp }}/goldens
-        run: |
-          mkdir -p "$NIKATRU_TO"
-          cp -a .nikatru-handoff/x/. "$NIKATRU_TO/"
-          rm -rf .nikatru-handoff/x
-      - name: Commit only golden PNGs and push to the branch
-        timeout-minutes: 3
-        env:
-          REF: ${{ inputs.ref }}
-          TESTS: ${{ inputs.tests }}
-          PUSH_TOKEN: ${{ github.token }}
-        run: |
-          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
-          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          set -euo pipefail
-          if [ "$REF" = "main" ] || [ "$REF" = "refs/heads/main" ]; then
-            echo "::error title=Refused::ref is main."
-            exit 1
-          fi
-          read -r -a tests <<< "$TESTS"
-          printf '%s\n' "${tests[@]}" | cut -d/ -f1,2 | sort -u > "$RUNNER_TEMP/packages.txt"
-          stage="$RUNNER_TEMP/goldens"
-          find "$stage" -type f -printf '%P\n' | sort > "$RUNNER_TEMP/files.txt"
-          if [ ! -s "$RUNNER_TEMP/files.txt" ]; then
-            echo "::error title=Nothing staged::the artifact holds no file."
-            exit 1
-          fi
-          if find "$stage" ! -type f ! -type d | grep -q .; then
-            echo "::error title=Refused::the artifact holds something that is not a regular file."
-            exit 1
-          fi
-          while IFS= read -r f; do
-            ok=0
-            while IFS= read -r pkg; do
-              case "$f" in
-                "$pkg"/test/*goldens/*.png)
-                  if printf '%s' "${f#"$pkg"/test/}" | grep -Eq '^([A-Za-z0-9_]+/)*goldens/[^/]+\.png$'; then ok=1; fi ;;
-              esac
-            done < "$RUNNER_TEMP/packages.txt"
-            if [ "$ok" -eq 0 ] || [ "$(head -c 8 "$stage/$f" | od -An -tx1 | tr -d ' \n')" != "89504e470d0a1a0a" ]; then
-              echo "::error title=Refused: not a golden PNG of a tested package::$f"
-              exit 1
-            fi
-            mkdir -p "$(dirname "$f")"
-            cp -- "$stage/$f" "$f"
-            git add -- "$f"
-          done < "$RUNNER_TEMP/files.txt"
-          if [ -n "$(git status --porcelain --untracked-files=all | grep -v '^M  \|^A  ' || true)" ]; then
-            echo "::error title=Refused::something other than a staged PNG changed."
-            git status --porcelain --untracked-files=all
-            exit 1
-          fi
-          if git diff --cached --quiet; then
-            echo "::notice title=Nothing to commit::the staged PNGs equal the branch's."
-            exit 0
-          fi
-          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "test(goldens): regenerate on linux (${run_url})"
-          # why: the CODE repository, not the run's: in the public shell (gen-public-shell.mjs) the header sets
-          # NIKATRU_PRIVATE_REPO and GITHUB_REPOSITORY names the PUBLIC shell, so a push must never take it there.
-          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${NIKATRU_PRIVATE_REPO:-$GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${REF}"
-          echo "::notice title=Goldens pushed to ${REF}::A push by GITHUB_TOKEN starts no workflow, so CI does not re-run by itself. Re-trigger it on the pull request: push any commit, or close and reopen it (ci.yml no longer runs on a body edit)."
-          NIKATRU_QUIET_EOF
-          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name update-goldens.commit.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Store this job's red detail in the bridge's private home (generated)
-        if: always()
-        continue-on-error: true
-        shell: bash
-        working-directory: ${{ github.workspace }}
-        env:
-          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
-          NIKATRU_ARTIFACT_NAME: report-detail-update-goldens.commit.${{ strategy.job-index }}
           NIKATRU_IF_NO_FILES: ignore
           BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
           NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
