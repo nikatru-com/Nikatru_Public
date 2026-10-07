@@ -1342,6 +1342,8 @@ jobs:
       - name: Read the Dependency Dashboard against its two floors
         env:
           GH_TOKEN: ${{ github.token }}
+          BRIDGE_READ_SECRET: ${{ secrets.BRIDGE_READ_SECRET }}
+          NIKATRU_BRIDGE_OPS_URL: https://gh-bridge.nikatru.workers.dev/ops
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -1350,7 +1352,7 @@ jobs:
           code=$?
           set -e
           if [ "$code" -eq 2 ]; then
-            echo "::error title=The Renovate backlog is UNKNOWN - could not read #417::COVERAGE LOST, not clean. No token, the API refused, the issue is not an open Dependency Dashboard, the entry grammar changed, the floor file is unreadable, or an age could only be bounded from below. The step log names which."
+            echo "::error title=The Renovate backlog is UNKNOWN - could not read the Dependency Dashboard::COVERAGE LOST, not clean. No token or no bridge, the bridge or the API refused, no single open dashboard by the Renovate App was found, the issue is not an open Dependency Dashboard, the entry grammar changed, the floor file is unreadable, or an age could only be bounded from below. The step log names which."
           elif [ "$code" -eq 1 ]; then
             echo "::error title=The Renovate queue outruns its floor::The waiting count or the oldest entry's age is past tooling/ops/renovate-backlog-floor.json. Merge the waiting PRs and approve the majors waiting on the dashboard; NEVER tick create-all."
           fi
