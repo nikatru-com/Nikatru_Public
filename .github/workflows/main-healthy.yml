@@ -12,6 +12,7 @@ on:
     workflows: [CI]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: main-healthy-${{ github.run_id }}
@@ -23,11 +24,12 @@ permissions:
 jobs:
   publish:
     name: Post main's health on the commit CI ran on
-    if: (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.event != 'pull_request')) && github.event_name == 'workflow_dispatch'
+    if: (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.event != 'pull_request'))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
+      actions: read
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -71,6 +73,8 @@ jobs:
       - name: Post the main-healthy status for the CI run that completed
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          BRIDGE_MAIN_HEALTH_SECRET: ${{ secrets.BRIDGE_MAIN_HEALTH_SECRET }}
+          NIKATRU_BRIDGE_MAIN_HEALTH_URL: https://gh-bridge.nikatru.workers.dev/main-health
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'

@@ -8,6 +8,8 @@ name: Autopilot watch
 run-name: "Autopilot watch · ${{ github.event.client_payload.sha }}"
 
 on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
   workflow_run:
     workflows: [CI, E2E live]
     types: [completed]
@@ -24,7 +26,7 @@ permissions:
 jobs:
   watch:
     name: Laptop state, PR board, run ledger
-    if: (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.event != 'pull_request')) && github.event_name == 'workflow_dispatch' && ((github.event.client_payload.ref || 'refs/heads/main') == 'refs/heads/main')
+    if: (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.event != 'pull_request')) && ((github.event.client_payload.ref || 'refs/heads/main') == 'refs/heads/main')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -76,6 +78,10 @@ jobs:
       - name: One watch pass
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          BRIDGE_WATCH_SECRET: ${{ secrets.BRIDGE_WATCH_SECRET }}
+          NIKATRU_BRIDGE_WATCH_URL: https://gh-bridge.nikatru.workers.dev/watch
+          BRIDGE_WATCH_ISSUE_SECRET: ${{ secrets.BRIDGE_WATCH_ISSUE_SECRET }}
+          NIKATRU_BRIDGE_WATCH_ISSUE_URL: https://gh-bridge.nikatru.workers.dev/watch-issue
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -98,7 +104,7 @@ jobs:
 
   e2e-after-deploy:
     name: E2E after a web deploy
-    if: (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.event != 'pull_request')) && github.event_name == 'workflow_dispatch' && ((github.event.client_payload.ref || 'refs/heads/main') == 'refs/heads/main')
+    if: (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.event != 'pull_request')) && ((github.event.client_payload.ref || 'refs/heads/main') == 'refs/heads/main')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -149,6 +155,8 @@ jobs:
       - name: Dispatch E2E live when the deployed head is not proven
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          BRIDGE_WATCH_SECRET: ${{ secrets.BRIDGE_WATCH_SECRET }}
+          NIKATRU_BRIDGE_WATCH_URL: https://gh-bridge.nikatru.workers.dev/watch
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'

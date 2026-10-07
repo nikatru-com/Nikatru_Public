@@ -44,7 +44,7 @@ verdict back to that repository. It is generated: a pull request here is not how
 ## Workflows (33)
 
 - `apple-expiry-write.yml`
-- `autopilot-watch.yml` — held
+- `autopilot-watch.yml`
 - `build-platforms.yml` — reports `all-platforms`
 - `ci.yml` — reports `ci-gate`
 - `codeql.yml` — reports `codeql`
@@ -55,14 +55,14 @@ verdict back to that repository. It is generated: a pull request here is not how
 - `extensions-ci.yml`
 - `extensions.yml` — reports `extensions`
 - `lane-workers.yml`
-- `main-healthy.yml` — held
+- `main-healthy.yml`
 - `migrate-platform-db.yml`
 - `mutation-proofs.yml`
 - `name-clearance.yml`
 - `native-auth-proof.yml`
 - `ops-watch.yml` — reports `ops-watch`
 - `pr-recheck.yml`
-- `redeploy-stranded.yml` — held
+- `redeploy-stranded.yml`
 - `regen-gradle-verify.yml`
 - `rehearse-app2.yml`
 - `renovate.yml` — reports `renovate`
@@ -76,12 +76,3 @@ verdict back to that repository. It is generated: a pull request here is not how
 - `time-travel.yml`
 - `trufflehog.yml`
 - `update-goldens.yml`
-
-## Held
-
-These run only when a person dispatches them: their schedule and chain runs are skipped, not red,
-until what each waits on is in place.
-
-- `autopilot-watch.yml` — until the shell holds a credential that reads the private repository's pull requests and files its ledger issue there (PLAN design item 2)
-- `main-healthy.yml` — until the shell can post a status on the private repository's commit: a credential that writes there, and the shell-run-to-private-commit mapping (GitHub migration P7)
-- `redeploy-stranded.yml` — until the shell holds a credential that reads the private repository's main and its ci-gate (PLAN design item 2)
