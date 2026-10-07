@@ -1692,13 +1692,18 @@ jobs:
       - name: The uploadable apps.gov.in .apk, or one line naming the null pin
         env:
           AGI_DIR: downloads/apps-gov-in-${{ matrix.app }}-apk
+          REF_TYPE: ${{ (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') }}
         run: |
           set -euo pipefail
           pin="$(node -p "require('./tooling/channel-register.json').channels.find((c) => c.id === 'apps-gov-in').signing.signingCertificate.sha256")"
+          # ⏱ 2026-10-07: the pin is set (nikatru-appsgovin). The .apk is OWED by a release (a tag run) only: a scheduled or
+          # dispatched branch run that uploaded nothing is the declared empty, not a missing .apk (release-nothing-owed.test.mjs).
           if [ -d "$AGI_DIR" ]; then
             echo "uploadable apps.gov.in apk downloaded into ${AGI_DIR}; --stage takes it with its stamp"
           elif [ "$pin" = "null" ]; then
             echo "no uploadable apps.gov.in apk: signingCertificate.sha256 is null"
+          elif [ "$REF_TYPE" != "tag" ]; then
+            echo "no uploadable apps.gov.in apk on a non-tag run: a release tag owes it (signingCertificate.sha256 is set)"
           else
             echo "::error title=apps.gov.in apk::signingCertificate.sha256 is ${pin} and this run uploaded no $(basename "$AGI_DIR") artifact"
             exit 1
@@ -1832,7 +1837,8 @@ jobs:
       - name: The register must be able to name where this ships
         env:
           APP: ${{ matrix.app }}
-        run: node tooling/ci/release-manifest.mjs --emit-environments dist --app "$APP"
+          REF_TYPE: ${{ (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') }}
+        run: node tooling/ci/release-manifest.mjs --emit-environments dist --app "$APP" --ref-type "$REF_TYPE"
       - name: Publish the GitHub Release (tag pushes only)
         if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag'
         env:
