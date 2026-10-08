@@ -502,7 +502,7 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.21 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Build android (apk — apps.gov.in, its own key, sells nothing)
+      - name: Build android (apk — apps.gov.in, its own key, sells on the India rail)
         id: build_apk_agi
         env:
           ANDROID_KEYSTORE_PATH: ${{ steps.agi_key.outputs.keystore_path }}
