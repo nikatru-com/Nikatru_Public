@@ -273,7 +273,7 @@ jobs:
           set -euo pipefail
           export CHROME_EXECUTABLE="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium-browser)"
           echo "Chrome: $CHROME_EXECUTABLE"
-          node tooling/store/capture-play-screenshots.mjs --app "$APP"
+          node tooling/store/capture-deadline.mjs --minutes 20 -- node tooling/store/capture-play-screenshots.mjs --app "$APP"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture.13 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
@@ -339,6 +339,7 @@ jobs:
           NIKATRU_PATHS: |
             apps/${{ needs.gate.outputs.app }}/store/android-play/screenshots/
             apps/${{ needs.gate.outputs.app }}/store/android-play/screenshots-tablet/
+            ${{ runner.temp }}/capture-evidence/
           NIKATRU_ARTIFACT_NAME: FAILED-not-a-listing-set-${{ github.run_id }}
           NIKATRU_IF_NO_FILES: ignore
           BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
@@ -634,6 +635,7 @@ jobs:
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
           set -euo pipefail
           xvfb-run -a -s "-screen 0 2560x1600x24" \
+            node tooling/store/capture-deadline.mjs --minutes 20 -- \
             node tooling/store/capture-play-screenshots.mjs --app "$APP" --channel linux-snap
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
@@ -680,7 +682,9 @@ jobs:
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_PATHS: ${{ steps.reg.outputs.dir }}/
+          NIKATRU_PATHS: |
+            ${{ steps.reg.outputs.dir }}/
+            ${{ runner.temp }}/capture-evidence/
           NIKATRU_ARTIFACT_NAME: FAILED-not-a-listing-set-${{ github.run_id }}
           NIKATRU_IF_NO_FILES: ignore
           BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
@@ -978,7 +982,7 @@ jobs:
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          node tooling/store/capture-play-screenshots.mjs --app "$APP" --channel "$STORE_CHANNEL"
+          node tooling/store/capture-deadline.mjs --minutes 30 -- node tooling/store/capture-play-screenshots.mjs --app "$APP" --channel "$STORE_CHANNEL"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-desktop-native.12 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
@@ -1024,7 +1028,9 @@ jobs:
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_PATHS: ${{ steps.reg.outputs.dir }}/
+          NIKATRU_PATHS: |
+            ${{ steps.reg.outputs.dir }}/
+            ${{ runner.temp }}/capture-evidence/
           NIKATRU_ARTIFACT_NAME: FAILED-not-a-listing-set-${{ github.run_id }}
           NIKATRU_IF_NO_FILES: ignore
           BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
@@ -1327,7 +1333,7 @@ jobs:
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          node tooling/store/capture-play-screenshots.mjs --app "$APP" --channel ios-appstore
+          node tooling/store/capture-deadline.mjs --minutes 30 -- node tooling/store/capture-play-screenshots.mjs --app "$APP" --channel ios-appstore
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.12 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
@@ -1374,7 +1380,7 @@ jobs:
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          node tooling/store/capture-iap-review.mjs --app "$APP"
+          node tooling/store/capture-deadline.mjs --minutes 10 --evidence-dir "${RUNNER_TEMP}/capture-evidence/iap" -- node tooling/store/capture-iap-review.mjs --app "$APP"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.17 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
@@ -1392,7 +1398,9 @@ jobs:
         shell: bash
         working-directory: ${{ github.workspace }}
         env:
-          NIKATRU_PATHS: apps/${{ needs.gate.outputs.app }}/store/ios-appstore/
+          NIKATRU_PATHS: |
+            apps/${{ needs.gate.outputs.app }}/store/ios-appstore/
+            ${{ runner.temp }}/capture-evidence/
           NIKATRU_ARTIFACT_NAME: FAILED-not-a-listing-set-${{ github.run_id }}
           NIKATRU_IF_NO_FILES: ignore
           BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
