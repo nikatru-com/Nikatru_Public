@@ -406,21 +406,11 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.15 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Resolve the app's store SDK key secret (play-billing)
-        id: rc-key
-        run: |
-          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
-          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          node tooling/ci/store-key-secret.mjs --app ${{ matrix.app }} --rail play-billing >> "$GITHUB_OUTPUT"
-          NIKATRU_QUIET_EOF
-          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.16 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Build android (apk — sideloadable build proof)
         env:
           RELEASE_LINE: ${{ steps.ver.outputs.release_line }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          REVENUECAT_PUBLIC_KEY: ${{ secrets.REVENUECAT_PUBLIC_KEY_GOOGLE }}
           GLITCHTIP_DSN: ${{ secrets.GLITCHTIP_DSN }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -428,14 +418,13 @@ jobs:
           node tooling/ci/flutter-release-build.mjs ${{ matrix.app }} apk android-play
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.17 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.16 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Build android (aab — the Google Play artifact)
         id: build_aab
         env:
           RELEASE_LINE: ${{ steps.ver.outputs.release_line }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          REVENUECAT_PUBLIC_KEY: ${{ secrets.REVENUECAT_PUBLIC_KEY_GOOGLE }}
           GLITCHTIP_DSN: ${{ secrets.GLITCHTIP_DSN }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -443,7 +432,7 @@ jobs:
           node tooling/ci/flutter-release-build.mjs ${{ matrix.app }} appbundle android-play
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.18 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.17 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Stamp the .aab with the channel its build compiled in
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -451,7 +440,7 @@ jobs:
           node tooling/ci/stamp-channel.mjs --channel android-play --build-step build_aab apps/${{ matrix.app }}/build/app/outputs/bundle/release/*.aab
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.19 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.18 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Prepare the apps.gov.in signing key (its own key, never the upload key)
         id: agi_key
         env:
@@ -488,7 +477,7 @@ jobs:
           echo "keystore_path=${keystore}" >> "$GITHUB_OUTPUT"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.20 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.19 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Set the Play .apk aside (Flutter writes every .apk to one path)
         working-directory: apps/${{ matrix.app }}
         run: |
@@ -501,7 +490,7 @@ jobs:
           if [ -f build/app/outputs/flutter-apk/app-release.apk.sha1 ]; then mv build/app/outputs/flutter-apk/app-release.apk.sha1 build/android-play-apk-aside/; fi
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.21 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.20 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Build android (apk — apps.gov.in, its own key, sells on the India rail)
         id: build_apk_agi
         env:
@@ -519,7 +508,7 @@ jobs:
           node tooling/ci/flutter-release-build.mjs ${{ matrix.app }} apk apps-gov-in
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.22 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.21 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Take the apps.gov.in .apk out, and put the Play .apk back
         id: agi_apk
         working-directory: apps/${{ matrix.app }}
@@ -543,7 +532,7 @@ jobs:
           echo "apk=apps/${APP}/build/apps-gov-in/${file}" >> "$GITHUB_OUTPUT"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.22 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Stamp the apps.gov.in .apk with the channel its build compiled in
         env:
           APK: ${{ steps.agi_apk.outputs.apk }}
@@ -553,7 +542,7 @@ jobs:
           node tooling/ci/stamp-channel.mjs --channel apps-gov-in --build-step build_apk_agi "$APK"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.24 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Stage symbols-${{ matrix.app }}-linux-android for this run's later jobs (generated)
         id: nikatru-stage-1
         if: ${{ !cancelled() }}
@@ -581,7 +570,7 @@ jobs:
           node tooling/ci/assert-artifact-signed.mjs apps/${{ matrix.app }}/build/app/outputs/bundle/release/app-release.aab
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.26 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.25 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every artifact this lane claims exists, and is not empty
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -589,7 +578,7 @@ jobs:
           node tooling/ci/assert-artifact-shape.mjs --app ${{ matrix.app }} --platform linux_web_android
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.27 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.26 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every native library is aligned for a 16 KB memory page
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -597,7 +586,7 @@ jobs:
           node --single-threaded tooling/ci/assert-elf-page-alignment.mjs apps/${{ matrix.app }}/build/app/outputs/bundle/release/app-release.aab
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.28 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.27 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Dump the .aab's merged permissions, cross-checked against the Play .apk
         id: aab_permissions
         run: |
@@ -606,7 +595,7 @@ jobs:
           node tooling/ci/dump-aab-permissions.mjs --aab apps/${{ matrix.app }}/build/app/outputs/bundle/release/app-release.aab --apk apps/${{ matrix.app }}/build/app/outputs/flutter-apk/app-release.apk --out ${{ runner.temp }}/android-permissions.json --run-id ${{ github.run_id }} --commit ${{ env.NIKATRU_SHA }} --artifact store-${{ matrix.app }}-android-aab-${{ env.ANDROID_SIGNING_POSTURE }}
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.29 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.28 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The Data safety merged set equals this build's .aab
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -614,7 +603,7 @@ jobs:
           node tooling/ci/assert-play-declarations.mjs --merged-dump ${{ runner.temp }}/android-permissions.json --app ${{ matrix.app }}
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.30 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.29 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The built .apk passes the static apps.gov.in VAPT items
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -622,7 +611,7 @@ jobs:
           node tooling/ci/assert-android-vapt-manifest.mjs apps/${{ matrix.app }}/build/app/outputs/flutter-apk/app-release.apk --app ${{ matrix.app }}
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.32 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.31 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Install glitchtip-cli (pinned by version AND by digest)
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -630,7 +619,7 @@ jobs:
           node tooling/ci/install-pinned-tool.mjs glitchtip-cli --out "$RUNNER_TEMP"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.33 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.32 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Upload the native debug symbols to GlitchTip
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.GLITCHTIP_TOKEN }}
@@ -650,7 +639,7 @@ jobs:
           done
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.34 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.33 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The apps.gov.in .apk passes the static apps.gov.in VAPT items
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -658,7 +647,7 @@ jobs:
           node tooling/ci/assert-android-vapt-manifest.mjs ${{ steps.agi_apk.outputs.apk }} --app ${{ matrix.app }}
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.39 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.38 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The apps.gov.in .apk's native libraries are aligned for a 16 KB memory page
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -666,7 +655,7 @@ jobs:
           node --single-threaded tooling/ci/assert-elf-page-alignment.mjs ${{ steps.agi_apk.outputs.apk }}
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.40 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.39 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The apps.gov.in listing media is still the derivation of the Play set
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -674,7 +663,7 @@ jobs:
           node --single-threaded tooling/ci/assert-apps-gov-in-media.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.41 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.40 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The apps.gov.in .apk — its signer against the pin, its minSdk against the form
         id: agi_verify
         run: |
@@ -683,7 +672,7 @@ jobs:
           node tooling/ci/assert-apps-gov-in-apk.mjs --apk ${{ steps.agi_apk.outputs.apk }} --app ${{ matrix.app }} --posture ${{ steps.agi_key.outputs.posture }}
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.42 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.linux_web_android.41 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Stage ${{ steps.agi_verify.outputs.artifact_name }} for this run's later jobs (generated)
         id: nikatru-stage-2
         shell: bash
@@ -1041,22 +1030,12 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.10 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: Resolve the app's store SDK key secret (apple-iap)
-        id: rc-key
-        run: |
-          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
-          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          node tooling/ci/store-key-secret.mjs --app ${{ matrix.app }} --rail apple-iap >> "$GITHUB_OUTPUT"
-          NIKATRU_QUIET_EOF
-          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.11 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Build macos
         id: build_macos
         env:
           RELEASE_LINE: ${{ steps.ver.outputs.release_line }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          REVENUECAT_PUBLIC_KEY: ${{ secrets.REVENUECAT_PUBLIC_KEY_APPLE }}
           GLITCHTIP_DSN: ${{ secrets.GLITCHTIP_DSN }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -1064,7 +1043,7 @@ jobs:
           node tooling/ci/flutter-release-build.mjs ${{ matrix.app }} macos macos-appstore
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.12 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.11 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The macOS bundle is signed by the identity this lane intended
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -1072,7 +1051,7 @@ jobs:
           node tooling/ci/assert-artifact-signed-apple.mjs apps/${{ matrix.app }}/build/macos/Build/Products/Release/*.app
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.13 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.12 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The macOS bundle carries the Info.plist keys app.yaml renders
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -1080,7 +1059,7 @@ jobs:
           node tooling/ci/assert-built-info-plist.mjs --app ${{ matrix.app }} apps/${{ matrix.app }}/build/macos/Build/Products/Release/*.app
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.14 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.13 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Build ios (signed archive + export)
         id: build_ipa
         if: env.APPLE_SIGNING_POSTURE == 'release-signed'
@@ -1088,7 +1067,6 @@ jobs:
           RELEASE_LINE: ${{ steps.ver.outputs.release_line }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          REVENUECAT_PUBLIC_KEY: ${{ secrets.REVENUECAT_PUBLIC_KEY_APPLE }}
           GLITCHTIP_DSN: ${{ secrets.GLITCHTIP_DSN }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -1096,7 +1074,7 @@ jobs:
           node tooling/ci/flutter-release-build.mjs ${{ matrix.app }} ipa ios-appstore
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.15 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.14 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Stamp the .ipa with the channel its build compiled in
         if: env.APPLE_SIGNING_POSTURE == 'release-signed'
         run: |
@@ -1105,7 +1083,7 @@ jobs:
           node tooling/ci/stamp-channel.mjs --channel ios-appstore --build-step build_ipa apps/${{ matrix.app }}/build/ios/ipa/*.ipa
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.16 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.15 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The .ipa carries the Info.plist keys app.yaml renders
         if: env.APPLE_SIGNING_POSTURE == 'release-signed'
         run: |
@@ -1114,14 +1092,13 @@ jobs:
           node tooling/ci/assert-built-info-plist.mjs --app ${{ matrix.app }} apps/${{ matrix.app }}/build/ios/ipa/*.ipa
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.17 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.16 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Build ios (no codesign — unsigned build proof)
         if: env.APPLE_SIGNING_POSTURE != 'release-signed'
         env:
           RELEASE_LINE: ${{ steps.ver.outputs.release_line }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          REVENUECAT_PUBLIC_KEY: ${{ secrets.REVENUECAT_PUBLIC_KEY_APPLE }}
           GLITCHTIP_DSN: ${{ secrets.GLITCHTIP_DSN }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -1129,7 +1106,7 @@ jobs:
           node tooling/ci/flutter-release-build.mjs ${{ matrix.app }} ios ios-appstore
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.18 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.17 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Stage symbols-${{ matrix.app }}-apple for this run's later jobs (generated)
         id: nikatru-stage-4
         shell: bash
@@ -1168,7 +1145,7 @@ jobs:
           ls -l "$out"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.20 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.19 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Stamp the .pkg with the channel its build compiled in
         if: env.APPLE_SIGNING_POSTURE == 'release-signed'
         run: |
@@ -1177,7 +1154,7 @@ jobs:
           node tooling/ci/stamp-channel.mjs --channel macos-appstore --build-step build_macos apps/${{ matrix.app }}/build/macos/pkg/*.pkg
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.21 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.20 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: PROVE the .ipa and .pkg are real and signed
         if: env.APPLE_SIGNING_POSTURE == 'release-signed'
         run: |
@@ -1186,7 +1163,7 @@ jobs:
           node tooling/ci/assert-artifact-signed-apple.mjs apps/${{ matrix.app }}/build/ios/ipa/*.ipa apps/${{ matrix.app }}/build/macos/pkg/*.pkg
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.22 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.21 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: PROVE the shipped bundles embed no SDK the privacy audit does not answer for
         if: env.APPLE_SIGNING_POSTURE == 'release-signed'
         run: |
@@ -1198,7 +1175,7 @@ jobs:
           exit "$status"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.22 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The iOS bundle is signed by the identity this lane intended
         if: env.APPLE_SIGNING_POSTURE != 'release-signed'
         run: |
@@ -1207,7 +1184,7 @@ jobs:
           node tooling/ci/assert-artifact-signed-apple.mjs apps/${{ matrix.app }}/build/ios/iphoneos/*.app
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.24 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The iOS bundle carries the Info.plist keys app.yaml renders
         if: env.APPLE_SIGNING_POSTURE != 'release-signed'
         run: |
@@ -1216,7 +1193,7 @@ jobs:
           node tooling/ci/assert-built-info-plist.mjs --app ${{ matrix.app }} apps/${{ matrix.app }}/build/ios/iphoneos/*.app
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.25 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.24 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every artifact this lane claims exists, and is not empty
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -1224,7 +1201,7 @@ jobs:
           node tooling/ci/assert-artifact-shape.mjs --app ${{ matrix.app }} --platform apple
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.26 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.25 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Install glitchtip-cli (pinned by version AND by digest)
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -1232,7 +1209,7 @@ jobs:
           node tooling/ci/install-pinned-tool.mjs glitchtip-cli --out "$RUNNER_TEMP"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.27 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.26 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Upload the native debug symbols to GlitchTip
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.GLITCHTIP_TOKEN }}
@@ -1252,7 +1229,7 @@ jobs:
           done
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.28 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.apple.27 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()

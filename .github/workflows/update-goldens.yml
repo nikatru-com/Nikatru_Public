@@ -41,6 +41,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+      id-token: write
     outputs:
       sha: ${{ steps.plan.outputs.sha }}
       count: ${{ steps.delta.outputs.count }}
@@ -141,8 +142,10 @@ jobs:
             exit 1
           fi
           # commit mode runs the BRANCH's tooling/ops/bridge-propose.mjs (the proposal step below).
-          if [ "$MODE" = "commit" ] && [ ! -f tooling/ops/bridge-propose.mjs ]; then
-            echo "::error title=Refused::'$REF' has no tooling/ops/bridge-propose.mjs, which has the bridge open the pull request. Merge main into the branch, or dispatch with mode=artifact."
+          # It must be one that sends the job's OIDC token (the bridge proposes for the caller's own run only) and reads
+          # the paths one per line (propose-door-followups); an older branch's client is refused here, not at the door.
+          if [ "$MODE" = "commit" ] && { [ ! -f tooling/ops/bridge-propose.mjs ] || ! grep -q 'NIKATRU_PROPOSE_PATH_LINES' tooling/ops/bridge-propose.mjs || ! grep -q 'x-bridge-oidc' tooling/ops/bridge-propose.mjs; }; then
+            echo "::error title=Refused::'$REF' has no tooling/ops/bridge-propose.mjs that sends the job's OIDC token and reads NIKATRU_PROPOSE_PATH_LINES, which the bridge needs to open the pull request. Merge main into the branch, or dispatch with mode=artifact."
             exit 1
           fi
           read -r -a tests <<< "$TESTS"
@@ -170,7 +173,20 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name update-goldens.regenerate.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - uses: ./.github/actions/setup-flutter
+      - name: Check out private main's composite actions (generated)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ env.NIKATRU_PRIVATE_REPO }}
+          ref: refs/heads/main
+          path: .nikatru-trusted
+          sparse-checkout: .github/actions
+          ssh-key: ${{ secrets.PRIVATE_DEPLOY_KEY }}
+          persist-credentials: false
+      - name: Keep private main's composite actions out of the branch's tree (generated)
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: printf '/.nikatru-trusted/\n' >> "$(git rev-parse --git-path info/exclude)"
+      - uses: ./.nikatru-trusted/.github/actions/setup-flutter
         timeout-minutes: 10
         with:
           cache: 'false'
@@ -228,7 +244,7 @@ jobs:
               while IFS= read -r pkg; do
                 case "$f" in
                   "$pkg"/test/*goldens/*.png)
-                    if printf '%s' "${f#"$pkg"/test/}" | grep -Eq '^([A-Za-z0-9_]+/)*goldens/[^/]+\.png$'; then ok=1; fi ;;
+                    if printf '%s' "${f#"$pkg"/test/}" | grep -Eq '^([A-Za-z0-9_]+/)*goldens/[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\.png$'; then ok=1; fi ;;
                 esac
               done < "$RUNNER_TEMP/packages.txt"
             fi
@@ -244,7 +260,13 @@ jobs:
           echo "Changed golden PNGs: $count"
           cat "$RUNNER_TEMP/changed.txt"
           echo "count=$count" >> "$GITHUB_OUTPUT"
-          echo "paths=$(tr '\n' ' ' < "$RUNNER_TEMP/changed.txt")" >> "$GITHUB_OUTPUT"
+          # One path per line (the proposal reads NIKATRU_PROPOSE_PATH_LINES): the regex above admits no whitespace,
+          # so no name is split, and none can end the multi-line output early.
+          {
+            echo 'paths<<NIKATRU_PATHS_EOF'
+            cat "$RUNNER_TEMP/changed.txt"
+            echo 'NIKATRU_PATHS_EOF'
+          } >> "$GITHUB_OUTPUT"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name update-goldens.regenerate.8 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
@@ -307,7 +329,7 @@ jobs:
         if: steps.delta.outputs.count != '0' && inputs.mode == 'commit'
         timeout-minutes: 5
         env:
-          NIKATRU_PROPOSE_PATHS: ${{ steps.delta.outputs.paths }}
+          NIKATRU_PROPOSE_PATH_LINES: ${{ steps.delta.outputs.paths }}
           NIKATRU_PROPOSE_BRANCH: goldens/${{ github.run_id }}
           NIKATRU_PROPOSE_BASE: ${{ inputs.ref }}
           NIKATRU_PROPOSE_TITLE: 'goldens: re-rendered on Linux by shell run ${{ github.run_id }}'
