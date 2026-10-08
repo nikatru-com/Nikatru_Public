@@ -117,6 +117,13 @@
 # own answer behind it) is transient too, or absent (the edge's 502): a GitHub 4xx behind a 502 is
 # not cured by asking again.
 #
+# ⏱ 2026-10-08 (gitleaks-pr-scoped-r2, review 26acc3ec finding 2): A GREEN GATE CAN CARRY NOTES. A
+# quiet step's `::nikatru-detail::` line lands in its job's detail as a `### NOTE <step>` section on a
+# green step too (the quiet-step wrapper), so a job with a note hands a detail over while green.
+# Every job's NOTE sections are added to the GATE's detail, and a `success` gate posts those sections
+# (and nothing else) as its detail; a lane's success still posts none. The first such note is an
+# applied PR-scoped secret-scan exemption (tooling/ci/scan-secrets.mjs), a hole a reviewer must see.
+#
 # Exit 0 every report accepted (handoff: sealed, or nothing to hand over; collect: the
 # bundle written) · 1 a report refused or not delivered (a verdict that did not land
 # must not look green) · 2 COVERAGE LOST: no config, no bridge URL, no secret, no sha —
@@ -156,6 +163,8 @@ SEAL_VERSION = b'\x01'
 NONCE_BYTES = 16
 TAG_BYTES = 32
 DETAIL_DIR = '.nikatru-detail'
+# A green step's own detail section (the quiet-step wrapper's noteSection).
+NOTE_HEADER = '### NOTE '
 # The agent every POST to the bridge names (B1): never urllib's default, which the edge bans.
 USER_AGENT = 'nikatru-shell-report/1'
 COLLECTED_DIR = '.nikatru-collected'
@@ -394,7 +403,19 @@ def detail_for(members, details):
     return join_detail([t for m, texts in details.items() if any(f'{m}.'.startswith(p) for p in members) for t in texts])
 
 
-def build(context, state, env, detail):
+def notes_of(detail):
+    """The `### NOTE <step>` sections of a detail (the quiet-step wrapper's noteSection): what a step
+    said to the private pull request on purpose, green or red."""
+    out, keep = [], False
+    for line in detail.split('\n'):
+        if line.startswith('### '):
+            keep = line.startswith(NOTE_HEADER)
+        if keep:
+            out.append(line)
+    return '\n'.join(out).strip('\n')
+
+
+def build(context, state, env, detail, gate=False):
     run_id, attempt = int(env['GITHUB_RUN_ID']), int(env['GITHUB_RUN_ATTEMPT'])
     body = {
         'run_id': run_id,
@@ -406,6 +427,9 @@ def build(context, state, env, detail):
     }
     if state in ('failure', 'error') and detail.strip():
         body['detail'] = tail_bytes(detail, DETAIL_MAX_BYTES)
+    elif state == 'success' and gate and notes_of(detail):
+        # ⏱ 2026-10-08 · gitleaks-pr-scoped-r2: a GREEN gate carries its NOTE sections, and only those.
+        body['detail'] = tail_bytes(notes_of(detail), DETAIL_MAX_BYTES)
     return body
 
 
@@ -512,9 +536,14 @@ def read_bundle(raw, env, cfg):
     unrestored = [member_of(k, prefix) for k in bundle['unrestored'] if isinstance(k, str)]
     if None in unrestored or len(unrestored) != len(bundle['unrestored']):
         raise Refused('it names an unrestored hand-off that is not this run\'s')
+    # Every job's NOTE sections ride on the gate's detail too: the gate's members are its own job,
+    # and a note (an applied PR-scoped secret-scan exemption) is said where the reviewer looks.
+    notes = notes_of(join_detail([t for texts in details.values() for t in texts]))
     out = {}
     for item in list(cfg['lanes']) + [cfg['gate']]:
         detail = detail_for(item['members'], details)
+        if item is cfg['gate'] and notes and notes not in detail:
+            detail = join_detail([detail, notes])
         if item is cfg['gate'] and unrestored:
             detail += '\n\n(' + str(len(unrestored)) + ' more red job(s) handed over detail this report could not carry: ' + ', '.join(unrestored) + ')\n'
         if detail.strip():
@@ -560,7 +589,7 @@ def send(env, cfg, opener=urllib.request.urlopen):
             print(f"x  {item['context']}: NOT reported — this run is not a pull request, main or a tag run (nor a lead dispatch its config allows) "
                   f"(event {env.get('NIKATRU_P_EVENT', '')!r}, ref {env.get('NIKATRU_P_REF', '')!r}); only such a run may write the gate")
             continue
-        status, why = post(url, secret, build(item['context'], state, env, details.get(item['context'], '')), cfg['postTimeoutS'], opener)
+        status, why = post(url, secret, build(item['context'], state, env, details.get(item['context'], ''), item is cfg['gate']), cfg['postTimeoutS'], opener)
         ok = 200 <= status < 300
         failed += 0 if ok else 1
         print(f"{'ok' if ok else 'x '} {item['context']} {state} -> HTTP {status}{f' ({why})' if why and not ok else ''}")
