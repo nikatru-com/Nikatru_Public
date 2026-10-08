@@ -59,6 +59,8 @@ concurrency:
 jobs:
   heartbeats:
     name: Every declared duty is fresh — the heartbeat rail AND the register
+    needs: [status, supabase-drift, prod-provenance, pages-deployments, runner-budget, glitchtip, edge-shield, failure-ledger, renovate-backlog, code-scanning-age, tech-currency, digest]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -112,6 +114,7 @@ jobs:
           GLITCHTIP_TOKEN: ${{ secrets.GLITCHTIP_TOKEN }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_READ_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          OPS_HOST_RUN_NEEDS: ${{ toJSON(needs) }}
           BRIDGE_READ_SECRET: ${{ secrets.BRIDGE_READ_SECRET }}
           NIKATRU_BRIDGE_OPS_URL: https://gh-bridge.nikatru.workers.dev/ops
         run: |
