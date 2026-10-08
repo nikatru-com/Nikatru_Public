@@ -20,5 +20,6 @@
       ]
     }
   ],
-  "leadDispatch": true
+  "leadDispatch": true,
+  "dispatchDetailUrl": "https://gh-bridge.nikatru.workers.dev/dispatch-detail"
 }

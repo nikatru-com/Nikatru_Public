@@ -19,5 +19,6 @@
         "codeql.detect."
       ]
     }
-  ]
+  ],
+  "dispatchDetailUrl": "https://gh-bridge.nikatru.workers.dev/dispatch-detail"
 }

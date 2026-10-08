@@ -159,5 +159,6 @@
         "extensions-ci."
       ]
     }
-  ]
+  ],
+  "dispatchDetailUrl": "https://gh-bridge.nikatru.workers.dev/dispatch-detail"
 }

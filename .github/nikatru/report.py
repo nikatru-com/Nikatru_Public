@@ -117,6 +117,16 @@
 # own answer behind it) is transient too, or absent (the edge's 502): a GitHub 4xx behind a 502 is
 # not cured by asking again.
 #
+# ⏱ 2026-10-08 (capture-detail-private): A MANUAL RUN'S RED DETAIL REACHES THE PRIVATE SIDE. A root whose shell
+# `on:` carries `workflow_dispatch` runs its collect and report jobs on such a run too (gen-public-shell.mjs
+# reportEventIf), and `send` then posts NO status — the run was dispatched by a person or the platform, not
+# for a private commit, and POST /report refuses it — but ONE signed body {run_id, run_attempt, detail} to the
+# config's `dispatchDetailUrl` (services/gh-bridge/src/dispatch-detail.ts). The bridge re-reads the run as
+# /report does and files the detail on its durable PRIVATE issue. The detail is the hand-offs' text, which
+# the quiet step wrapper masked when it captured it; this log prints only the HTTP status. Red jobs with no detail
+# handed over still post their names; nothing red and nothing lost posts nothing. A 409 is the bridge saying
+# this attempt's detail is already filed (the fallback step after a send that died past its post): not a failure.
+#
 # ⏱ 2026-10-08 (gitleaks-pr-scoped-r2, review 26acc3ec finding 2): A GREEN GATE CAN CARRY NOTES. A
 # quiet step's `::nikatru-detail::` line lands in its job's detail as a `### NOTE <step>` section on a
 # green step too (the quiet-step wrapper), so a job with a note hands a detail over while green.
@@ -564,7 +574,54 @@ def gate_origin_ok(env, cfg=None):
     return event == 'push' and (ref == 'refs/heads/main' or ref.startswith('refs/tags/'))
 
 
+def dispatch_detail(details, lost, results, cfg):
+    """The ONE detail of a manual run: each red or detailed lane and the gate, a section each, within DETAIL_MAX_BYTES."""
+    sections = []
+    for item in list(cfg['lanes']) + [cfg['gate']]:
+        result = results.get(item['job'], 'absent')
+        text = details.get(item['context'], '')
+        if result in ('failure', 'cancelled') or text.strip():
+            sections.append(f"## {item['context']} — {result}\n\n" + (text.strip() or '(no red detail was handed over for this job)') + '\n')
+    if lost:
+        sections.append(f'## COVERAGE LOST\n\n{lost}\n')
+    return join_detail(sections)
+
+
+def send_dispatch(env, cfg, opener=urllib.request.urlopen):
+    """A workflow_dispatch run: no status (no private commit was dispatched), its red detail to the private home."""
+    url = cfg.get('dispatchDetailUrl')
+    if not url:
+        raise Lost('the config names no dispatchDetailUrl: this root does not declare workflow_dispatch to the generator')
+    secret = env.get('BRIDGE_REPORT_SECRET', '')
+    if not secret:
+        raise Lost('BRIDGE_REPORT_SECRET is not set: the detail cannot be signed')
+    try:
+        results = json.loads(env.get('NIKATRU_RESULTS', ''))
+    except ValueError:
+        raise Lost('NIKATRU_RESULTS is not the JSON map of job results the report job is given')
+    details, lost = received_details(env, cfg)
+    detail = dispatch_detail(details, lost, results, cfg)
+    if env.get('GITHUB_OUTPUT'):
+        with open(env['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
+            f.write('reported=true\n')
+    if not detail.strip():
+        print('-- workflow_dispatch run: nothing red and no detail; nothing sent to the private home')
+        return 0
+    body = {'run_id': int(env['GITHUB_RUN_ID']), 'run_attempt': int(env['GITHUB_RUN_ATTEMPT']), 'detail': tail_bytes(detail, DETAIL_MAX_BYTES)}
+    status, why = post(url, secret, body, cfg['postTimeoutS'], opener)
+    if 200 <= status < 300 or status == 409:
+        print(f'ok workflow_dispatch red detail -> HTTP {status} (filed privately{"; already filed for this attempt" if status == 409 else ""})')
+        if lost:
+            print(f'x COVERAGE LOST - report.py: {lost}', file=sys.stderr)
+            return 2
+        return 0
+    print(f"x  workflow_dispatch red detail -> HTTP {status}{f' ({why})' if why else ''}")
+    return 1
+
+
 def send(env, cfg, opener=urllib.request.urlopen):
+    if env.get('GITHUB_EVENT_NAME') == 'workflow_dispatch':
+        return send_dispatch(env, cfg, opener)
     url = cfg.get('bridgeUrl')
     if not url:
         raise Lost('the config names no bridge URL (generated before services/gh-bridge/wrangler.jsonc was in the tree)')

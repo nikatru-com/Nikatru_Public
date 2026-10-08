@@ -244,7 +244,7 @@ jobs:
   nikatru-collect:
     name: Collect the red detail, without the report secret (generated)
     needs: [detect, analyze]
-    if: always() && github.event_name == 'repository_dispatch' && (github.event_name != 'repository_dispatch' || github.event.client_payload.event == 'pull_request' || (github.event.client_payload.event == 'push' && github.event.client_payload.ref == 'refs/heads/main'))
+    if: always() && (github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && (github.event_name != 'repository_dispatch' || github.event.client_payload.event == 'pull_request' || (github.event.client_payload.event == 'push' && github.event.client_payload.ref == 'refs/heads/main'))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -394,7 +394,7 @@ jobs:
   nikatru-report:
     name: Report to the private repository (generated)
     needs: [detect, analyze, nikatru-collect]
-    if: always() && github.event_name == 'repository_dispatch' && (github.event_name != 'repository_dispatch' || github.event.client_payload.event == 'pull_request' || (github.event.client_payload.event == 'push' && github.event.client_payload.ref == 'refs/heads/main'))
+    if: always() && (github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && (github.event_name != 'repository_dispatch' || github.event.client_payload.event == 'pull_request' || (github.event.client_payload.event == 'push' && github.event.client_payload.ref == 'refs/heads/main'))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

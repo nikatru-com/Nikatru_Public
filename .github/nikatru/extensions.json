@@ -68,5 +68,6 @@
         "extensions.store-key-keepalive."
       ]
     }
-  ]
+  ],
+  "dispatchDetailUrl": "https://gh-bridge.nikatru.workers.dev/dispatch-detail"
 }

@@ -68,5 +68,6 @@
         "build-platforms.attest."
       ]
     }
-  ]
+  ],
+  "dispatchDetailUrl": "https://gh-bridge.nikatru.workers.dev/dispatch-detail"
 }
