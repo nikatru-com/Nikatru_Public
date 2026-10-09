@@ -1538,7 +1538,7 @@ jobs:
       - name: The tool's own declared store gates, on the release zip (tool.json gates, stage release)
         env:
           TOOL_ID: ${{ steps.tag.outputs.id }}
-        run: node scripts/discover.mjs --run-gates --tool "$TOOL_ID" --stage release --zip "dist/${TOOL_ID}-firefox.zip"
+        run: node scripts/discover.mjs --run-gates --tool "$TOOL_ID" --stage release --zip-dir dist
       - name: The AMO listing payload the first submit would carry (dry run)
         run: node scripts/amo-metadata.mjs --tool "${{ steps.tag.outputs.id }}" --print
       - name: Reference integrity + leak check on every artifact
@@ -2316,6 +2316,86 @@ jobs:
           key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions.store-key-keepalive.${{ strategy.job-index }}
           enableCrossOsArchive: true
 
+  scheduled-proof-fresh:
+    name: Proof freshness on the schedule (is the daily cron alive?)
+    if: (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v'))) && ((github.event.client_payload.event || github.event_name) == 'schedule')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the private tree (generated)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ env.NIKATRU_PRIVATE_REPO }}
+          ref: ${{ github.event.client_payload.event == 'pull_request' && format('refs/pull/{0}/merge', github.event.client_payload.pr) || github.event.client_payload.sha || 'main' }}
+          ssh-key: ${{ secrets.PRIVATE_DEPLOY_KEY }}
+          persist-credentials: false
+      - name: Name the private commit (generated)
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_P_EVENT: ${{ github.event.client_payload.event || github.event_name }}
+          NIKATRU_P_REF: ${{ github.event.client_payload.ref || 'refs/heads/main' }}
+          NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
+          NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
+          NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
+          NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
+        run: |
+          if [ "$NIKATRU_P_EVENT" = pull_request ]; then
+            set -- $(git cat-file -p HEAD | sed -n 's/^parent //p')
+            if [ "${2:-}" != "$NIKATRU_P_SHA" ]; then
+              echo "::error::refs/pull/$NIKATRU_P_PR/merge is not yet the merge of the dispatched head $NIKATRU_P_SHA (its second parent is ${2:-none}); GitHub recomputes it after a push — re-run this job"
+              exit 1
+            fi
+          fi
+          {
+            echo "NIKATRU_SHA=$(git rev-parse HEAD)"
+            echo "NIKATRU_HEAD_SHA=${NIKATRU_P_SHA:-$(git rev-parse HEAD)}"
+            echo "NIKATRU_EVENT_NAME=$NIKATRU_P_EVENT"
+            echo "NIKATRU_REF=$NIKATRU_P_REF"
+            echo "NIKATRU_REF_NAME=${NIKATRU_P_REF#refs/*/}"
+            echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
+            echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
+            echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
+          } >> "$GITHUB_ENV"
+      - uses: ./.github/actions/setup-node
+      - name: The daily e2e proof must be RECENT, SCHEDULED and GREEN
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          node scripts/assert-e2e-proof-fresh.mjs
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name extensions.scheduled-proof-fresh.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Hand this job's red detail to the report job, sealed (generated)
+        id: nikatru-handoff
+        if: always()
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_DETAIL_KEY: ${{ secrets.NIKATRU_DETAIL_KEY }}
+          NIKATRU_HANDOFF: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions.scheduled-proof-fresh.${{ strategy.job-index }}
+        run: |
+          if [ -s "$RUNNER_TEMP/report-detail.md" ]; then
+            py=python3; python3 -c '' >/dev/null 2>&1 || py=python
+            "$py" -I "$GITHUB_WORKSPACE/tooling/ci/shell-report.py" handoff
+          fi
+      - name: Save the hand-off (generated)
+        if: always() && steps.nikatru-handoff.outputs.has == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .nikatru-detail
+          key: nikatru-detail-${{ github.run_id }}-${{ github.run_attempt }}-extensions.scheduled-proof-fresh.${{ strategy.job-index }}
+          enableCrossOsArchive: true
+
   extensions-lane-accounting:
     name: The lane that should have run, ran
     needs:
@@ -2327,6 +2407,7 @@ jobs:
       - store-publish
       - cws-token-keepalive
       - store-key-keepalive
+      - scheduled-proof-fresh
     if: (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v'))) && (always())
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -2384,6 +2465,7 @@ jobs:
           STORE: ${{ needs.store-publish.result }}
           KEEPALIVE: ${{ needs.cws-token-keepalive.result }}
           STORE_KEEPALIVE: ${{ needs.store-key-keepalive.result }}
+          PROOF_FRESH: ${{ needs.scheduled-proof-fresh.result }}
           DRY_RUN: ${{ inputs.dry_run }}
           EVENT: ${{ (github.event.client_payload.event || github.event_name) }}
           REF: ${{ (github.event.client_payload.ref || 'refs/heads/main') }}
@@ -2406,7 +2488,7 @@ jobs:
           # So the guards are not trusted: the lane is derived here, separately,
           # from the event, and the results are required to match it.
           echo "event=$EVENT ref=$REF action=${ACTION:-none} label=${LABEL:-none} lane_input=${LANE:-none}"
-          echo "ci=$CI e2e=$E2E e2e-branded=$BRANDED release=$RELEASE attest=$ATTEST store-publish=$STORE keepalive=$KEEPALIVE store-key-keepalive=$STORE_KEEPALIVE"
+          echo "ci=$CI e2e=$E2E e2e-branded=$BRANDED release=$RELEASE attest=$ATTEST store-publish=$STORE keepalive=$KEEPALIVE store-key-keepalive=$STORE_KEEPALIVE scheduled-proof-fresh=$PROOF_FRESH"
 
           # ⏱ 2026-09-24: the CI lane left this file for extensions-ci.yml, which ci.yml
           # calls on every pull request and push to main. Here it runs only on a dispatch
@@ -2507,6 +2589,16 @@ jobs:
           }
           grade_scheduled cws-token-keepalive "$KEEPALIVE"
           grade_scheduled store-key-keepalive "$STORE_KEEPALIVE"
+          case "$EVENT:$PROOF_FRESH" in
+            schedule:success) ;;
+            schedule:*)
+              echo "::error::'scheduled-proof-fresh' came out '$PROOF_FRESH' on the daily schedule. It is the only run of the extensions proof-fresh gate while main is quiet; a skipped run grades nothing, and a failed one says the e2e proof is stale, red, or the cron is dead (its own log names which)."
+              fail=1 ;;
+            *:skipped) ;;
+            *)
+              echo "::error::'scheduled-proof-fresh' came out '$PROOF_FRESH' on event '$EVENT'. It carries \`if: github.event_name == 'schedule'\`; on any other event the push and pull-request caller (extensions-ci.yml e2e-proof-fresh) grades the proof, so this job must be SKIPPED."
+              fail=1 ;;
+          esac
 
           if [ "$want" = unknown ]; then
             echo "::error::this job could not derive a lane from event '$EVENT' on ref '$REF'. A new trigger was added to this workflow and this accounting was not taught about it, so nothing here graded the run. Add the case."
@@ -2541,7 +2633,7 @@ jobs:
 
   nikatru-collect:
     name: Collect the red detail, without the report secret (generated)
-    needs: [ci, e2e-suite, e2e-branded, release, attest, store-publish, cws-token-keepalive, store-key-keepalive, extensions-lane-accounting]
+    needs: [ci, e2e-suite, e2e-branded, release, attest, store-publish, cws-token-keepalive, store-key-keepalive, scheduled-proof-fresh, extensions-lane-accounting]
     if: always() && (github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v')))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -2691,7 +2783,7 @@ jobs:
 
   nikatru-report:
     name: Report to the private repository (generated)
-    needs: [ci, e2e-suite, e2e-branded, release, attest, store-publish, cws-token-keepalive, store-key-keepalive, extensions-lane-accounting, nikatru-collect]
+    needs: [ci, e2e-suite, e2e-branded, release, attest, store-publish, cws-token-keepalive, store-key-keepalive, scheduled-proof-fresh, extensions-lane-accounting, nikatru-collect]
     if: always() && (github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && (github.event_name != 'repository_dispatch' || (github.event.client_payload.event == 'push' && startsWith(github.event.client_payload.ref, 'refs/tags/fullshot-v')))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -2714,7 +2806,7 @@ jobs:
           NIKATRU_P_EVENT: ${{ github.event.client_payload.event }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
           NIKATRU_P_REF: ${{ github.event.client_payload.ref }}
-          NIKATRU_RESULTS: '{"ci": "${{ needs.ci.result }}", "e2e-suite": "${{ needs.e2e-suite.result }}", "e2e-branded": "${{ needs.e2e-branded.result }}", "release": "${{ needs.release.result }}", "attest": "${{ needs.attest.result }}", "store-publish": "${{ needs.store-publish.result }}", "cws-token-keepalive": "${{ needs.cws-token-keepalive.result }}", "store-key-keepalive": "${{ needs.store-key-keepalive.result }}", "extensions-lane-accounting": "${{ needs.extensions-lane-accounting.result }}"}'
+          NIKATRU_RESULTS: '{"ci": "${{ needs.ci.result }}", "e2e-suite": "${{ needs.e2e-suite.result }}", "e2e-branded": "${{ needs.e2e-branded.result }}", "release": "${{ needs.release.result }}", "attest": "${{ needs.attest.result }}", "store-publish": "${{ needs.store-publish.result }}", "cws-token-keepalive": "${{ needs.cws-token-keepalive.result }}", "store-key-keepalive": "${{ needs.store-key-keepalive.result }}", "scheduled-proof-fresh": "${{ needs.scheduled-proof-fresh.result }}", "extensions-lane-accounting": "${{ needs.extensions-lane-accounting.result }}"}'
         run: /usr/bin/python3 -I .github/nikatru/report.py send .github/nikatru/extensions.json
       - name: Report every lane and the gate without detail, as the step above did not run to its end (generated)
         if: always() && steps.send.outputs.reported != 'true'
@@ -2724,5 +2816,5 @@ jobs:
           NIKATRU_P_EVENT: ${{ github.event.client_payload.event }}
           NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
           NIKATRU_P_REF: ${{ github.event.client_payload.ref }}
-          NIKATRU_RESULTS: '{"ci": "${{ needs.ci.result }}", "e2e-suite": "${{ needs.e2e-suite.result }}", "e2e-branded": "${{ needs.e2e-branded.result }}", "release": "${{ needs.release.result }}", "attest": "${{ needs.attest.result }}", "store-publish": "${{ needs.store-publish.result }}", "cws-token-keepalive": "${{ needs.cws-token-keepalive.result }}", "store-key-keepalive": "${{ needs.store-key-keepalive.result }}", "extensions-lane-accounting": "${{ needs.extensions-lane-accounting.result }}"}'
+          NIKATRU_RESULTS: '{"ci": "${{ needs.ci.result }}", "e2e-suite": "${{ needs.e2e-suite.result }}", "e2e-branded": "${{ needs.e2e-branded.result }}", "release": "${{ needs.release.result }}", "attest": "${{ needs.attest.result }}", "store-publish": "${{ needs.store-publish.result }}", "cws-token-keepalive": "${{ needs.cws-token-keepalive.result }}", "store-key-keepalive": "${{ needs.store-key-keepalive.result }}", "scheduled-proof-fresh": "${{ needs.scheduled-proof-fresh.result }}", "extensions-lane-accounting": "${{ needs.extensions-lane-accounting.result }}"}'
         run: /usr/bin/python3 -I .github/nikatru/report.py send .github/nikatru/extensions.json
