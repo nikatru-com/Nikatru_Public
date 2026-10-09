@@ -80,10 +80,33 @@ jobs:
             echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
+      - name: Read the build the live platform runs
+        id: live-build
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          node tooling/catalog/store-grantable.mjs --print-live-build >> "$GITHUB_OUTPUT"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name catalog-sync.dry-run.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: "Check out the live build's store-skus.ts (generated: the private tree)"
+        if: steps.live-build.outputs.build != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ env.NIKATRU_PRIVATE_REPO }}
+          ref: ${{ steps.live-build.outputs.build }}
+          path: .live-build
+          fetch-depth: 1
+          sparse-checkout: services/platform/src/lib/mor/store-skus.ts
+          sparse-checkout-cone-mode: false
+          ssh-key: ${{ secrets.PRIVATE_DEPLOY_KEY }}
+          persist-credentials: false
       - name: Diff every rail against the register (read-only)
         env:
           NIKATRU_EVENT: ${{ (github.event.client_payload.event || github.event_name) }}
           NIKATRU_PUSH_BEFORE: ${{ (github.event.client_payload.event == 'push' && github.event.client_payload.base_sha || '') }}
+          NIKATRU_LIVE_BUILD_CHECKOUT: .live-build
+          NIKATRU_LIVE_BUILD: ${{ steps.live-build.outputs.build }}
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_READONLY_SERVICE_ACCOUNT_JSON || secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_READONLY_PRIVATE_KEY && secrets.APP_STORE_CONNECT_READONLY_KEY_ID || secrets.APP_STORE_CONNECT_KEY_ID }}
@@ -103,7 +126,7 @@ jobs:
           node tooling/catalog/sync-products.mjs --dry-run --apply-time-only razorpay --report "$RUNNER_TEMP/catalog-sync/diff.md" "${since[@]}"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name catalog-sync.dry-run.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name catalog-sync.dry-run.5 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store catalog-sync-diff in the bridge's private home (generated)
         if: always()
         shell: bash
@@ -188,10 +211,27 @@ jobs:
       - name: Refuse any ref but main
         run: node tooling/ci/assert-deploy-ref.mjs --allow main
       - uses: ./.github/actions/setup-node
+      - name: Read the build the live platform runs
+        id: live-build
+        run: node tooling/catalog/store-grantable.mjs --print-live-build >> "$GITHUB_OUTPUT"
+      - name: "Check out the live build's store-skus.ts (generated: the private tree)"
+        if: steps.live-build.outputs.build != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ env.NIKATRU_PRIVATE_REPO }}
+          ref: ${{ steps.live-build.outputs.build }}
+          path: .live-build
+          fetch-depth: 1
+          sparse-checkout: services/platform/src/lib/mor/store-skus.ts
+          sparse-checkout-cone-mode: false
+          ssh-key: ${{ secrets.PRIVATE_DEPLOY_KEY }}
+          persist-credentials: false
       - name: Apply the register to every rail, then record the read-backs
         env:
           GITHUB_TOKEN: ${{ github.token }}
           NIKATRU_ARCHIVE: ${{ inputs.archive }}
+          NIKATRU_LIVE_BUILD_CHECKOUT: .live-build
+          NIKATRU_LIVE_BUILD: ${{ steps.live-build.outputs.build }}
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
