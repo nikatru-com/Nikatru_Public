@@ -1,0 +1,16 @@
+{
+  "_generated": "by tooling/ci/gen-public-shell.mjs; read by report.py beside it. Do not edit.",
+  "bridgeUrl": "https://gh-bridge.nikatru.workers.dev/report",
+  "postTimeoutS": 30,
+  "prefix": "nikatru-detail-",
+  "slots": 8,
+  "gate": {
+    "job": "dry-run",
+    "context": "catalog-sync",
+    "members": [
+      "catalog-sync.dry-run."
+    ]
+  },
+  "lanes": [],
+  "dispatchDetailUrl": "https://gh-bridge.nikatru.workers.dev/dispatch-detail"
+}

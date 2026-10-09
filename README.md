@@ -41,11 +41,12 @@ verdict back to that repository. It is generated: a pull request here is not how
   `BRIDGE_ARTIFACT_SECRET` (signs a private artifact upload; held only by the private-artifact
   steps), plus what each workflow reads.
 
-## Workflows (33)
+## Workflows (34)
 
 - `apple-expiry-write.yml`
 - `autopilot-watch.yml`
 - `build-platforms.yml` — reports `all-platforms`
+- `catalog-sync.yml` — reports `catalog-sync`
 - `ci.yml` — reports `ci-gate`
 - `codeql.yml` — reports `codeql`
 - `deploy-sandbox.yml`

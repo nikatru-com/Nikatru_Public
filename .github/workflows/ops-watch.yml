@@ -34,6 +34,10 @@ on:
         description: 'Set by the platform Worker cron only: nobody is watching this run, so a failure files the ops-watch issue (off for land-script and hand dispatches)'
         type: boolean
         default: false
+      digest:
+        description: 'Also post the weekly ops digest (off for the Worker and post-merge dispatches; the Monday slot posts it regardless)'
+        type: boolean
+        default: false
   schedule:
     - cron: '30 7 * * *'
     - cron: '45 7 * * 1'
@@ -53,13 +57,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: ops-watch
+  group: ops-watch-${{ (github.event.client_payload.event || github.event_name) }}
   cancel-in-progress: false
 
 jobs:
   heartbeats:
     name: Every declared duty is fresh — the heartbeat rail AND the register
-    needs: [status, supabase-drift, prod-provenance, pages-deployments, runner-budget, glitchtip, edge-shield, failure-ledger, renovate-backlog, code-scanning-age, tech-currency, digest]
+    needs: [status, supabase-drift, prod-provenance, pages-deployments, runner-budget, glitchtip, config-drift, edge-shield, failure-ledger, renovate-backlog, code-scanning-age, tech-currency, digest]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -409,26 +413,6 @@ jobs:
             echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
-      - name: Compare the live Supabase auth config against tooling/mail-transport.json
-        env:
-          SUPABASE_PAT: ${{ secrets.SUPABASE_PAT }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-        run: |
-          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
-          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          set +e
-          node tooling/ops/verify-supabase-templates.mjs
-          code=$?
-          set -e
-          if [ "$code" -eq 2 ]; then
-            echo "::error title=Supabase drift is UNKNOWN — nothing was compared::The script found no SUPABASE_PAT / SUPABASE_PROJECT_REF, or could not read the live auth config from the Management API (the log above says which), so NOTHING compared the live auth config against tooling/mail-transport.json or the DR templates in docs/platform/supabase/email-templates/. This fails on purpose: 'I could not look' must never read as 'I looked and it was fine'. OWNER ACTION — add SUPABASE_PAT and SUPABASE_PROJECT_REF as repository secrets. Until then this duty is unperformed, and on 2026-08-04 a one-field PATCH wiped the live SMTP block and reverted all three branded templates, recovering byte-for-byte only because those files happened to still match."
-          elif [ "$code" -eq 1 ]; then
-            echo "::error title=Supabase auth config has DRIFTED::The live project no longer matches what the repo recorded. Decide which side is wrong before editing either — the log above names every field and file that differs."
-          fi
-          exit "$code"
-          NIKATRU_QUIET_EOF
-          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.supabase-drift.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The live site's sign-in key is accepted by the auth host
         if: ${{ !cancelled() }}
         timeout-minutes: 3
@@ -447,7 +431,7 @@ jobs:
           exit "$code"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.supabase-drift.4 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.supabase-drift.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
         continue-on-error: true
@@ -629,7 +613,7 @@ jobs:
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
           set +e
-          node tooling/ops/check-worker-versions.mjs --cloudflare-read-pending-until 2026-10-21
+          node tooling/ops/check-worker-versions.mjs --cloudflare-read-paged
           code=$?
           set -e
           if [ "$code" -eq 2 ]; then
@@ -650,7 +634,7 @@ jobs:
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
           set +e
-          node tooling/ops/check-cloudflare-usage.mjs --cloudflare-read-pending-until 2026-10-21
+          node tooling/ops/check-cloudflare-usage.mjs --cloudflare-read-paged
           code=$?
           set -e
           if [ "$code" -eq 2 ]; then
@@ -802,45 +786,6 @@ jobs:
             echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
-      - name: The register still matches the live GlitchTip monitors
-        env:
-          GLITCHTIP_TOKEN: ${{ secrets.GLITCHTIP_TOKEN }}
-        run: |
-          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
-          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          set +e
-          node tooling/ops/verify-monitors.mjs
-          code=$?
-          set -e
-          if [ "$code" -eq 2 ]; then
-            echo "::error title=Monitor reconciliation is UNKNOWN — GlitchTip was not read::The token is missing or refused, the instance did not answer, or the monitor list came back in a shape this script cannot read. NOTHING was reconciled, so nothing is known to have drifted."
-          elif [ "$code" -eq 1 ]; then
-            echo "::error title=The monitor register and live GlitchTip disagree::A declared host has no live monitor, a live monitor matches no row, or the register disagrees with the app catalogue. The step log names each one."
-          fi
-          exit "$code"
-          NIKATRU_QUIET_EOF
-          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: …and every monitor can still reach a mailbox
-        if: always()
-        env:
-          GLITCHTIP_TOKEN: ${{ secrets.GLITCHTIP_TOKEN }}
-        run: |
-          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
-          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          set +e
-          node tooling/ops/verify-alarm-chains.mjs
-          code=$?
-          set -e
-          if [ "$code" -eq 2 ]; then
-            echo "::error title=Alarm chains are UNKNOWN — GlitchTip was not read::The monitor list, the project list or a project's alerts could not be read. NOTHING about those chains was judged."
-          elif [ "$code" -eq 1 ]; then
-            echo "::error title=An alarm chain no longer reaches a mailbox::A monitor has no project, a project has no alert with a recipient, or a chain has never been watched delivering. The step log names each one."
-          fi
-          exit "$code"
-          NIKATRU_QUIET_EOF
-          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.4 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The app's federated-provider declaration matches the live project
         if: always()
         env:
@@ -852,7 +797,7 @@ jobs:
           node tooling/ops/verify-auth-providers.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.5 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The store service account is still powerless on GCP
         if: always()
         env:
@@ -863,7 +808,7 @@ jobs:
           node tooling/ops/verify-free-api-scope.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.6 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.4 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The zone itself still holds no wildcard record
         if: always()
         env:
@@ -883,49 +828,7 @@ jobs:
           exit "$code"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.7 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: The mail-auth DNS records still say what the register declares
-        if: always()
-        timeout-minutes: 3
-        run: |
-          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
-          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          set +e
-          node tooling/ops/check-mail-auth-dns.mjs
-          code=$?
-          set -e
-          if [ "$code" -eq 2 ]; then
-            echo "::error title=The mail-auth DNS records are UNKNOWN - they were not judged::Neither DoH resolver answered for a record, the two disagree (a SPLIT, which is what a record mid-change looks like), or the register's authRecords block is missing or malformed. NOTHING about those records is known from this run, and that is never a pass."
-          elif [ "$code" -eq 1 ]; then
-            echo "::error title=A mail-auth DNS record no longer says what the register declares::A missing or changed SPF, DKIM, DMARC or bounce-MX record makes receivers junk mail that still reports sent. If the DNS changed on purpose, change authRecords in tooling/mail-transport.json the same hour; this red reaches ci-gate on every open pull request. The step log names the record."
-          fi
-          exit "$code"
-          NIKATRU_QUIET_EOF
-          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.8 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: The Apple signing certificates and profiles in register.json still match App Store Connect
-        if: always()
-        timeout-minutes: 3
-        env:
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
-        run: |
-          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
-          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          set +e
-          node tooling/ops/check-apple-signing-expiry.mjs
-          code=$?
-          set -e
-          if [ "$code" -eq 2 ]; then
-            echo "::error title=The Apple signing dates are UNKNOWN - App Store Connect was not read::A credential is missing, the key was refused (401 or 403), a read outlived the bounded retry, or an answer came back in a shape the checker cannot read. NOTHING about the certificates or profiles is known from this run, and that is never a pass."
-          elif [ "$code" -eq 1 ]; then
-            echo "::error title=An Apple certificate or profile no longer matches register.json::A date differs from App Store Connect, a row is missing, an id answered 404, or a profile is not ACTIVE. For a date or a missing row: cut a branch from main, dispatch apple-expiry-write.yml on it, open the pull request. A 404 or an INVALID profile is a re-mint first, by provision-apple on the laptop. This red reaches ci-gate on every open pull request. The step log names the row."
-          fi
-          exit "$code"
-          NIKATRU_QUIET_EOF
-          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.9 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.5 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Turnstile still allows every host the apps are served from
         if: always()
         env:
@@ -947,7 +850,7 @@ jobs:
           exit "$code"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.10 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.6 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: No retired name is still a live resource in the account
         if: always()
         env:
@@ -968,7 +871,7 @@ jobs:
           exit "$code"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.11 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.7 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: No sandbox Worker holds the service-role key
         if: always()
         env:
@@ -989,7 +892,7 @@ jobs:
           exit "$code"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.12 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.glitchtip.8 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
         continue-on-error: true
@@ -998,6 +901,189 @@ jobs:
         env:
           NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
           NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.glitchtip.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
+
+  config-drift:
+    name: The live config still matches what the repo records
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the private tree (generated)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ env.NIKATRU_PRIVATE_REPO }}
+          ref: ${{ github.event.client_payload.event == 'pull_request' && format('refs/pull/{0}/merge', github.event.client_payload.pr) || github.event.client_payload.sha || 'main' }}
+          ssh-key: ${{ secrets.PRIVATE_DEPLOY_KEY }}
+          persist-credentials: false
+      - name: Name the private commit (generated)
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_P_EVENT: ${{ github.event.client_payload.event || github.event_name }}
+          NIKATRU_P_REF: ${{ github.event.client_payload.ref || 'refs/heads/main' }}
+          NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
+          NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
+          NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
+          NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
+        run: |
+          if [ "$NIKATRU_P_EVENT" = pull_request ]; then
+            set -- $(git cat-file -p HEAD | sed -n 's/^parent //p')
+            if [ "${2:-}" != "$NIKATRU_P_SHA" ]; then
+              echo "::error::refs/pull/$NIKATRU_P_PR/merge is not yet the merge of the dispatched head $NIKATRU_P_SHA (its second parent is ${2:-none}); GitHub recomputes it after a push — re-run this job"
+              exit 1
+            fi
+          fi
+          {
+            echo "NIKATRU_SHA=$(git rev-parse HEAD)"
+            echo "NIKATRU_HEAD_SHA=${NIKATRU_P_SHA:-$(git rev-parse HEAD)}"
+            echo "NIKATRU_EVENT_NAME=$NIKATRU_P_EVENT"
+            echo "NIKATRU_REF=$NIKATRU_P_REF"
+            echo "NIKATRU_REF_NAME=${NIKATRU_P_REF#refs/*/}"
+            echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
+            echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
+            echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
+          } >> "$GITHUB_ENV"
+      - uses: ./.github/actions/setup-node
+      - name: Compare the live Supabase auth config against tooling/mail-transport.json
+        if: ${{ !cancelled() }}
+        env:
+          SUPABASE_PAT: ${{ secrets.SUPABASE_PAT }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          set +e
+          node tooling/ops/verify-supabase-templates.mjs
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            echo "::error title=Supabase drift is UNKNOWN — nothing was compared::The script found no SUPABASE_PAT / SUPABASE_PROJECT_REF, or could not read the live auth config from the Management API (the log above says which), so NOTHING compared the live auth config against tooling/mail-transport.json or the DR templates in docs/platform/supabase/email-templates/. This fails on purpose: 'I could not look' must never read as 'I looked and it was fine'. OWNER ACTION — add SUPABASE_PAT and SUPABASE_PROJECT_REF as repository secrets. Until then this duty is unperformed, and on 2026-08-04 a one-field PATCH wiped the live SMTP block and reverted all three branded templates, recovering byte-for-byte only because those files happened to still match."
+          elif [ "$code" -eq 1 ]; then
+            echo "::error title=Supabase auth config has DRIFTED::The live project no longer matches what the repo recorded. Decide which side is wrong before editing either — the log above names every field and file that differs."
+          fi
+          exit "$code"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.config-drift.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: The register still matches the live GlitchTip monitors
+        if: ${{ !cancelled() }}
+        env:
+          GLITCHTIP_TOKEN: ${{ secrets.GLITCHTIP_TOKEN }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          set +e
+          node tooling/ops/verify-monitors.mjs
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            echo "::error title=Monitor reconciliation is UNKNOWN — GlitchTip was not read::The token is missing or refused, the instance did not answer, or the monitor list came back in a shape this script cannot read. NOTHING was reconciled, so nothing is known to have drifted."
+          elif [ "$code" -eq 1 ]; then
+            echo "::error title=The monitor register and live GlitchTip disagree::A declared host has no live monitor, a live monitor matches no row, or the register disagrees with the app catalogue. The step log names each one."
+          fi
+          exit "$code"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.config-drift.4 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: …and every monitor can still reach a mailbox
+        if: always()
+        env:
+          GLITCHTIP_TOKEN: ${{ secrets.GLITCHTIP_TOKEN }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          set +e
+          node tooling/ops/verify-alarm-chains.mjs
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            echo "::error title=Alarm chains are UNKNOWN — GlitchTip was not read::The monitor list, the project list or a project's alerts could not be read. NOTHING about those chains was judged."
+          elif [ "$code" -eq 1 ]; then
+            echo "::error title=An alarm chain no longer reaches a mailbox::A monitor has no project, a project has no alert with a recipient, or a chain has never been watched delivering. The step log names each one."
+          fi
+          exit "$code"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.config-drift.5 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: The mail-auth DNS records still say what the register declares
+        if: always()
+        timeout-minutes: 3
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          set +e
+          node tooling/ops/check-mail-auth-dns.mjs
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            echo "::error title=The mail-auth DNS records are UNKNOWN - they were not judged::Neither DoH resolver answered for a record, the two disagree (a SPLIT, which is what a record mid-change looks like), or the register's authRecords block is missing or malformed. NOTHING about those records is known from this run, and that is never a pass."
+          elif [ "$code" -eq 1 ]; then
+            echo "::error title=A mail-auth DNS record no longer says what the register declares::A missing or changed SPF, DKIM, DMARC or bounce-MX record makes receivers junk mail that still reports sent. If the DNS changed on purpose, change authRecords in tooling/mail-transport.json the same hour. This red PAGES (the ops-watch issue) and does not block merges (duty.drift.live-config is page-only), so that pull request can land. The step log names the record."
+          fi
+          exit "$code"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.config-drift.6 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: The Apple signing certificates and profiles in register.json still match App Store Connect
+        if: always()
+        timeout-minutes: 3
+        env:
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          set +e
+          node tooling/ops/check-apple-signing-expiry.mjs
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            echo "::error title=The Apple signing dates are UNKNOWN - App Store Connect was not read::A credential is missing, the key was refused (401 or 403), a read outlived the bounded retry, or an answer came back in a shape the checker cannot read. NOTHING about the certificates or profiles is known from this run, and that is never a pass."
+          elif [ "$code" -eq 1 ]; then
+            echo "::error title=An Apple certificate or profile no longer matches register.json::A date differs from App Store Connect, a row is missing, an id answered 404, or a profile is not ACTIVE. For a date or a missing row: cut a branch from main, dispatch apple-expiry-write.yml on it, open the pull request. A 404 or an INVALID profile is a re-mint first, by provision-apple on the laptop. This red PAGES (the ops-watch issue) and does not block merges (duty.drift.live-config is page-only), so the apple-expiry-write pull request can land. The step log names the row."
+          fi
+          exit "$code"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.config-drift.7 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: CLOUDFLARE_READ_TOKEN is minted, and the read steps no longer fall back to the deploy token
+        if: ${{ !cancelled() }}
+        env:
+          CLOUDFLARE_READ_TOKEN: ${{ secrets.CLOUDFLARE_READ_TOKEN }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          set +e
+          node tooling/ops/check-cloudflare-read-token.mjs --page-from 2026-10-14
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            echo "::error title=The Cloudflare read-token state is UNKNOWN::The workflow file or the page-from date could not be read. NOTHING was judged."
+          elif [ "$code" -eq 1 ]; then
+            echo "::error title=CLOUDFLARE_READ_TOKEN is not minted, or the deploy token still reaches a read step::Mint a read-only Cloudflare token (the step log lists the permissions) as the CLOUDFLARE_READ_TOKEN secret of the CI repository; once it is set, drop every fallback to the deploy token from ops-watch.yml. Until then the token-only limbs of three readers are NOT JUDGED. This pages and does not block merges."
+          fi
+          exit "$code"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.config-drift.8 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Store this job's red detail in the bridge's private home (generated)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.config-drift.${{ strategy.job-index }}
           NIKATRU_IF_NO_FILES: ignore
           BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
           NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
@@ -1115,7 +1201,7 @@ jobs:
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
           set +e
-          node tooling/ops/check-edge-zone.mjs --cloudflare-read-pending-until 2026-10-21
+          node tooling/ops/check-edge-zone.mjs --cloudflare-read-paged
           code=$?
           set -e
           if [ "$code" -eq 2 ]; then
@@ -1383,6 +1469,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      actions: read
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -1424,7 +1511,7 @@ jobs:
             echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
           } >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node
-      - name: Read the open code-scanning alerts against their triage window
+      - name: Read main's CodeQL results against their triage window
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -1436,9 +1523,9 @@ jobs:
           code=$?
           set -e
           if [ "$code" -eq 2 ]; then
-            echo "::error title=The code-scanning alerts are UNKNOWN - could not read them::COVERAGE LOST, not clean. No token, the API refused (security-events: read, or code scanning off), a page that is not an alert array, an item missing its fields, or a truncated list. The step log names which."
+            echo "::error title=Main's CodeQL results are UNKNOWN - could not read them::COVERAGE LOST, not clean. No token, the Actions API refused (actions: read), no completed analysis of main, a run with no verdict or no readable counts line, or an age that could only be bounded from below. The step log names which."
           elif [ "$code" -eq 1 ]; then
-            echo "::error title=A high or critical code-scanning alert is untriaged past its window::The step log lists each one with its rule, age and path:line. Fix it, or dismiss it on GitHub WITH a reason; a dismissal with no reason is graded as still open."
+            echo "::error title=A critical or high CodeQL result on main has no disposition past its window::The step log names main's analysis run and how long the count has stood; each result is in that run's private CodeQL report detail. Fix it, or give it a by-design entry in tooling/ci/codeql-dispositions.json."
           fi
           exit "$code"
           NIKATRU_QUIET_EOF
@@ -1550,7 +1637,7 @@ jobs:
   alert:
     name: Open or refresh the ops-watch issue
     needs:
-      [heartbeats, status, supabase-drift, prod-provenance, pages-deployments, runner-budget, glitchtip, edge-shield, failure-ledger, renovate-backlog, code-scanning-age, tech-currency]
+      [heartbeats, status, supabase-drift, prod-provenance, pages-deployments, runner-budget, glitchtip, config-drift, edge-shield, failure-ledger, renovate-backlog, code-scanning-age, tech-currency]
     if: failure() && ((github.event.client_payload.event || github.event_name) == 'schedule' || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.unattended))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -1665,7 +1752,7 @@ jobs:
   digest:
     name: Weekly digest
     needs: [failure-ledger]
-    if: always() && (github.event.schedule == '45 7 * * 1' || (github.event.client_payload.event || github.event_name) == 'workflow_dispatch')
+    if: always() && (github.event.schedule == '45 7 * * 1' || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.digest))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

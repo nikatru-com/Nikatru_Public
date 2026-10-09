@@ -371,6 +371,7 @@ jobs:
           --url ${{ steps.target.outputs.site_url }}/version.json
           --field build_number
           --expect ${{ github.run_number }}
+          --bundle-dir apps/${{ matrix.app }}/build/web
       - name: Record the deployed SHA
         if: always() && steps.deploy.outcome == 'success'
         working-directory: .
