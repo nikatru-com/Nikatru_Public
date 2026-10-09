@@ -84,10 +84,10 @@ jobs:
         env:
           NIKATRU_EVENT: ${{ (github.event.client_payload.event || github.event_name) }}
           NIKATRU_PUSH_BEFORE: ${{ (github.event.client_payload.event == 'push' && github.event.client_payload.base_sha || '') }}
-          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_READONLY_SERVICE_ACCOUNT_JSON || secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_READONLY_PRIVATE_KEY && secrets.APP_STORE_CONNECT_READONLY_KEY_ID || secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_READONLY_KEY_ID && secrets.APP_STORE_CONNECT_READONLY_PRIVATE_KEY || secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
           PADDLE_API_KEY_READ: ${{ secrets.PADDLE_API_KEY_READ }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"

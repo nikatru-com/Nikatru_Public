@@ -1,0 +1,37 @@
+{
+  "_generated": "by tooling/ci/gen-public-shell.mjs; read by report.py beside it. Do not edit.",
+  "bridgeUrl": "https://gh-bridge.nikatru.workers.dev/report",
+  "postTimeoutS": 30,
+  "prefix": "nikatru-detail-",
+  "slots": 8,
+  "gate": {
+    "job": "web-preview",
+    "context": "web-preview",
+    "members": [
+      "web-preview.web-preview."
+    ]
+  },
+  "lanes": [
+    {
+      "job": "plan",
+      "context": "web-preview/plan",
+      "members": [
+        "web-preview.plan."
+      ]
+    },
+    {
+      "job": "gate",
+      "context": "web-preview/gate",
+      "members": [
+        "web-preview.gate."
+      ]
+    },
+    {
+      "job": "preview-site",
+      "context": "web-preview/preview-site",
+      "members": [
+        "web-preview.preview-site."
+      ]
+    }
+  ]
+}

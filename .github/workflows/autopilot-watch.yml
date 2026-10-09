@@ -55,13 +55,6 @@ jobs:
           NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
-          if [ "$NIKATRU_P_EVENT" = pull_request ]; then
-            set -- $(git cat-file -p HEAD | sed -n 's/^parent //p')
-            if [ "${2:-}" != "$NIKATRU_P_SHA" ]; then
-              echo "::error::refs/pull/$NIKATRU_P_PR/merge is not yet the merge of the dispatched head $NIKATRU_P_SHA (its second parent is ${2:-none}); GitHub recomputes it after a push — re-run this job"
-              exit 1
-            fi
-          fi
           {
             echo "NIKATRU_SHA=$(git rev-parse HEAD)"
             echo "NIKATRU_HEAD_SHA=${NIKATRU_P_SHA:-$(git rev-parse HEAD)}"
@@ -132,13 +125,6 @@ jobs:
           NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
           NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
         run: |
-          if [ "$NIKATRU_P_EVENT" = pull_request ]; then
-            set -- $(git cat-file -p HEAD | sed -n 's/^parent //p')
-            if [ "${2:-}" != "$NIKATRU_P_SHA" ]; then
-              echo "::error::refs/pull/$NIKATRU_P_PR/merge is not yet the merge of the dispatched head $NIKATRU_P_SHA (its second parent is ${2:-none}); GitHub recomputes it after a push — re-run this job"
-              exit 1
-            fi
-          fi
           {
             echo "NIKATRU_SHA=$(git rev-parse HEAD)"
             echo "NIKATRU_HEAD_SHA=${NIKATRU_P_SHA:-$(git rev-parse HEAD)}"

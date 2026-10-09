@@ -20,9 +20,9 @@ on:
         default: 'dry-run-only'
         type: string
       track:
-        description: 'Play track. Leave empty to use the least-public track the API reports for the app. `production` is REFUSED unless release_status is draft (ADR 031 class A: staging is not promoting).'
+        description: 'Play track. Default internal. If this app''s API names its internal-testing track `qa`, type qa. `production` is REFUSED unless release_status is draft (ADR 031 class A: staging is not promoting).'
         required: false
-        default: ''
+        default: 'internal'
         type: string
       release_status:
         description: 'Release status on that track: completed (served to the track''s testers) or draft (uploaded, not served).'
@@ -315,8 +315,8 @@ jobs:
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-play.dry-run.14 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Dry-run the Google Play submission (opens and deletes an uncommitted edit)
         env:
-          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          PLAY_TRACK: ${{ vars.PLAY_TRACK }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_READONLY_SERVICE_ACCOUNT_JSON || secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_TRACK: ${{ inputs.track || 'internal' }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -522,13 +522,13 @@ jobs:
         run: node tooling/ci/assert-name-clearance.mjs --for-submission=android-play
       - name: The app's Play declarations are sworn, not preview (--for-submission)
         env:
-          PLAY_TRACK: ${{ inputs.track }}
+          PLAY_TRACK: ${{ inputs.track || 'internal' }}
         run: node tooling/ci/assert-sworn-store-files.mjs --for-submission=android-play --app "$APP" --real-submission
       - name: A pending in-app purchase declaration is not submitted (android-play)
         run: node tooling/ci/assert-app-yaml.mjs --for-submission=android-play --app "$APP"
       - name: A build that cannot sign in reaches no public track (android-play)
         env:
-          PLAY_TRACK: ${{ inputs.track }}
+          PLAY_TRACK: ${{ inputs.track || 'internal' }}
         run: node tooling/ci/assert-channel-register.mjs --for-submission=android-play --real-submission
       - name: Every target this channel ships to has its golden-path legs graded (android-play)
         run: node tooling/ci/assert-e2e-legs.mjs --for-submission=android-play
@@ -619,11 +619,15 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           AAB: apps/${{ needs.gate.outputs.app }}/build/app/outputs/bundle/release/app-release.aab
         run: node tooling/ci/assert-artifact-size.mjs --app "$APP" --channel android-play "$AAB"
+      - name: The store service account is still powerless on GCP
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: node tooling/ops/verify-free-api-scope.mjs
       - name: Upload to Google Play
         id: upload
         env:
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          PLAY_TRACK: ${{ inputs.track }}
+          PLAY_TRACK: ${{ inputs.track || 'internal' }}
           RELEASE_STATUS: ${{ inputs.release_status }}
           CONFIRM: ${{ inputs.confirm }}
           GITHUB_TOKEN: ${{ github.token }}
@@ -653,7 +657,7 @@ jobs:
           ')"
           echo "⬜ [14]O-7 reading the Play track state for ${APPLICATION_ID}, expecting versionCode ${VERSION_CODE}"
           node tooling/ops/post-deploy-smoke.mjs --play-package "${APPLICATION_ID}" --expect "${VERSION_CODE}"
-          echo "::notice title=Play versionCode high-water::versionCode ${VERSION_CODE} is consumed. Record it in tooling/channel-register.json android-play.versionCodeHighWater.consumed.${APP}, and the ledger now holds it: the next dispatch stops until consumed is raised to it"
+          echo "::notice title=Play versionCode high-water::versionCode ${VERSION_CODE} is consumed, and the ledger now holds it: the next dispatch stops until the mark is raised. One command moves the mark AND the release-notes header together (review B5-store-channels m7) - node tooling/release/advance-play-mark.mjs --app ${APP} --consumed ${VERSION_CODE} --run ${GITHUB_RUN_ID} --notes <next release notes file> (or --keep-notes for a hotfix), then commit both files"
       - name: Record the submission in the [10]D-9 ledger
         if: always() && steps.upload.outcome == 'success'
         env:
@@ -662,11 +666,14 @@ jobs:
           LISTING_URL: ${{ inputs.listing_url }}
           VERSION_CODE: ${{ needs.dry-run.outputs.version_code }}
           RELEASE_STATUS: ${{ inputs.release_status }}
+          PLAY_TRACK: ${{ inputs.track || 'internal' }}
           AAB: apps/${{ needs.gate.outputs.app }}/build/app/outputs/bundle/release/app-release.aab
         run: |
           set -euo pipefail
           if [ "$RELEASE_STATUS" = draft ]; then
             node tooling/ci/record-deployment.mjs "${APP}-android-play" --state draft_staged --listing-url "$LISTING_URL" --version-code "$VERSION_CODE" --mode production --artifact "$AAB" --build-number "$VERSION_CODE" --symbols-record "${RUNNER_TEMP}/symbols-record.json"
+          elif [ "$PLAY_TRACK" = internal ] || [ "$PLAY_TRACK" = qa ]; then
+            node tooling/ci/record-deployment.mjs "${APP}-android-play" --state testing_live --listing-url "$LISTING_URL" --version-code "$VERSION_CODE" --mode production --artifact "$AAB" --build-number "$VERSION_CODE" --symbols-record "${RUNNER_TEMP}/symbols-record.json"
           else
             node tooling/ci/record-deployment.mjs "${APP}-android-play" --state in_review --listing-url "$LISTING_URL" --version-code "$VERSION_CODE" --mode production --artifact "$AAB" --build-number "$VERSION_CODE" --symbols-record "${RUNNER_TEMP}/symbols-record.json"
           fi

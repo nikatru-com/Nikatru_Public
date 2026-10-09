@@ -9,7 +9,7 @@ run-name: "Build apps · ${{ github.event.client_payload.sha }}"
 
 on:
   repository_dispatch:
-    types: [ci]
+    types: [tag]
   workflow_dispatch:
   schedule:
     - cron: '0 6 * * 1'

@@ -133,6 +133,8 @@ jobs:
       artifact: ${{ steps.bytes.outputs.artifact }}
       sha256: ${{ steps.bytes.outputs.sha256 }}
       release_line: ${{ steps.ver.outputs.release_line }}
+      snapcraft_version: ${{ steps.snapcraft.outputs.version }}
+      snapcraft_revision: ${{ steps.snapcraft.outputs.revision }}
     env:
       APP: ${{ needs.gate.outputs.app }}
     steps:
@@ -275,6 +277,7 @@ jobs:
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-snap.dry-run.11 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Install snapcraft (the track tooling/versions.json pins)
+        id: snapcraft
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -282,6 +285,20 @@ jobs:
           track="$(node -p "require('./tooling/versions.json').snapcraft_track")"
           echo "snapcraft track ${track} (tooling/versions.json snapcraft_track)"
           sudo snap install snapcraft --classic --channel "$track"
+          # why (review B5-store-channels m6, 2026-10-08; independent review of PR #178 finding 4, 2026-10-09): the
+          # track lets point releases move, and an EXACT version pin broke both jobs on every upstream point release
+          # until a commit moved it (a revision pin cannot replace it: `snap install --revision` needs developer
+          # access to the snap). So snapcraft_version is a FLOOR (the track serving below it is a rollback, refused),
+          # and the ONE-snapcraft property is held where it matters: the submit job refuses a revision other than
+          # the one this dry run packed and rehearsed with, which it receives as this job's output.
+          want="$(node -p "require('./tooling/versions.json').snapcraft_version")"
+          got="$(snapcraft --version | sed -n 's/^snapcraft[[:space:]]*//p' | head -1)"
+          rev="$(snap list snapcraft | awk 'NR==2 {print $3}')"
+          echo "snapcraft ${got} (revision ${rev}) installed from ${track}; floor ${want} (tooling/versions.json snapcraft_version)"
+          [ -n "$got" ] && [ -n "$rev" ] || { echo "::error title=snapcraft pin::could not read the installed snapcraft version (${got:-none}) or revision (${rev:-none})."; exit 1; }
+          [ "$(printf '%s\n%s\n' "$want" "$got" | sort -V | head -1)" = "$want" ] || { echo "::error title=snapcraft pin::the ${track} track served snapcraft ${got}, BELOW the floor ${want} in tooling/versions.json: a rollback on the track, not a release to pack with."; exit 1; }
+          echo "version=${got}" >> "$GITHUB_OUTPUT"
+          echo "revision=${rev}" >> "$GITHUB_OUTPUT"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-snap.dry-run.12 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
@@ -567,11 +584,29 @@ jobs:
           cp -a .nikatru-handoff/x/. "$NIKATRU_TO/"
           rm -rf .nikatru-handoff/x
       - name: Install snapcraft (the track tooling/versions.json pins)
+        env:
+          DRY_RUN_SNAPCRAFT_VERSION: ${{ needs.dry-run.outputs.snapcraft_version }}
+          DRY_RUN_SNAPCRAFT_REVISION: ${{ needs.dry-run.outputs.snapcraft_revision }}
         run: |
           set -euo pipefail
           track="$(node -p "require('./tooling/versions.json').snapcraft_track")"
           echo "snapcraft track ${track} (tooling/versions.json snapcraft_track)"
           sudo snap install snapcraft --classic --channel "$track"
+          # why (review B5-store-channels m6, 2026-10-08; independent review of PR #178 finding 4, 2026-10-09): the
+          # track lets point releases move, and an EXACT version pin broke both jobs on every upstream point release
+          # until a commit moved it (a revision pin cannot replace it: `snap install --revision` needs developer
+          # access to the snap). So snapcraft_version is a FLOOR (the track serving below it is a rollback, refused),
+          # and the ONE-snapcraft property is held where it matters: the submit job refuses a revision other than
+          # the one this dry run packed and rehearsed with, which it receives as this job's output.
+          want="$(node -p "require('./tooling/versions.json').snapcraft_version")"
+          got="$(snapcraft --version | sed -n 's/^snapcraft[[:space:]]*//p' | head -1)"
+          rev="$(snap list snapcraft | awk 'NR==2 {print $3}')"
+          echo "snapcraft ${got} (revision ${rev}) installed from ${track}; floor ${want} (tooling/versions.json snapcraft_version)"
+          [ -n "$got" ] && [ -n "$rev" ] || { echo "::error title=snapcraft pin::could not read the installed snapcraft version (${got:-none}) or revision (${rev:-none})."; exit 1; }
+          [ "$(printf '%s\n%s\n' "$want" "$got" | sort -V | head -1)" = "$want" ] || { echo "::error title=snapcraft pin::the ${track} track served snapcraft ${got}, BELOW the floor ${want} in tooling/versions.json: a rollback on the track, not a release to pack with."; exit 1; }
+          # The upload runs the snapcraft the dry run rehearsed, or nothing: a point release that landed between the two
+          # jobs is refused here, and a re-dispatch converges (its dry run and submit then install the same revision).
+          [ "$rev" = "$DRY_RUN_SNAPCRAFT_REVISION" ] || { echo "::error title=snapcraft pin::the submit job installed snapcraft ${got} (revision ${rev}), and the dry run packed and rehearsed with ${DRY_RUN_SNAPCRAFT_VERSION:-unknown} (revision ${DRY_RUN_SNAPCRAFT_REVISION:-unknown}). The ${track} track moved between the two jobs; dispatch again so both run one snapcraft."; exit 1; }
       - name: Copy this build's symbols to the release store (R2), before the upload
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -610,4 +645,4 @@ jobs:
           LISTING_URL: ${{ inputs.listing_url }}
           RUN_NUMBER: ${{ github.run_number }}
           SNAP: apps/${{ needs.gate.outputs.app }}/build/linux/snap/${{ needs.gate.outputs.app }}.snap
-        run: node tooling/ci/record-deployment.mjs "${APP}-linux-snap" --state in_review --listing-url "$LISTING_URL" --mode production --artifact "$SNAP" --build-number "$RUN_NUMBER" --symbols-record "${RUNNER_TEMP}/symbols-record.json"
+        run: node tooling/ci/record-deployment.mjs "${APP}-linux-snap" --state released --listing-url "$LISTING_URL" --mode production --artifact "$SNAP" --build-number "$RUN_NUMBER" --symbols-record "${RUNNER_TEMP}/symbols-record.json"

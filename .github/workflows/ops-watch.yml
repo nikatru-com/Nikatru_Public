@@ -30,6 +30,10 @@ on:
         description: 'Also scan every tracked lockfile on main with OSV-Scanner (red while an advisory stands; off for post-merge dispatches)'
         type: boolean
         default: false
+      self_review:
+        description: 'Also run the weekly self-review over the last ISO week and file it to its private issue (red while partial; off for post-merge dispatches)'
+        type: boolean
+        default: false
       unattended:
         description: 'Set by the platform Worker cron only: nobody is watching this run, so a failure files the ops-watch issue (off for land-script and hand dispatches)'
         type: boolean
@@ -63,7 +67,7 @@ concurrency:
 jobs:
   heartbeats:
     name: Every declared duty is fresh — the heartbeat rail AND the register
-    needs: [status, supabase-drift, prod-provenance, pages-deployments, runner-budget, glitchtip, config-drift, edge-shield, failure-ledger, renovate-backlog, code-scanning-age, tech-currency, digest]
+    needs: [status, supabase-drift, prod-provenance, pages-deployments, runner-budget, glitchtip, config-drift, edge-shield, failure-ledger, renovate-backlog, code-scanning-age, tech-currency, self-review, digest]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -801,7 +805,7 @@ jobs:
       - name: The store service account is still powerless on GCP
         if: always()
         env:
-          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          CWS_SERVICE_ACCOUNT_JSON: ${{ secrets.CWS_SERVICE_ACCOUNT_JSON }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -856,6 +860,16 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_READ_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PADDLE_API_KEY: ${{ secrets.PADDLE_READ_API_KEY }}
+          REVENUECAT_API_V2_SECRET_KEY: ${{ secrets.REVENUECAT_READ_API_V2_SECRET_KEY }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_READ_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_READ_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_READ_PRIVATE_KEY }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_READ_SERVICE_ACCOUNT_JSON }}
+          MS_STORE_TENANT_ID: ${{ secrets.MS_STORE_READ_TENANT_ID }}
+          MS_STORE_CLIENT_ID: ${{ secrets.MS_STORE_READ_CLIENT_ID }}
+          MS_STORE_CLIENT_SECRET: ${{ secrets.MS_STORE_READ_CLIENT_SECRET }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -864,9 +878,9 @@ jobs:
           code=$?
           set -e
           if [ "$code" -eq 2 ]; then
-            echo "::error title=The live inventory is UNKNOWN - the account was not read::No token, or a resource kind the token cannot list. An unread account is not a clean one: reading four kinds of five and printing ok would make this check's coverage depend on which scopes the token holds that day."
+            echo "::error title=A live inventory is UNKNOWN - a catalogue was not read::The step log names each limb that could not look (an unset credential, a refused read, or an empty answer). An unread catalogue is not a clean one: printing ok over the limbs that happened to be readable would make this check's coverage depend on which secrets exist that day."
           elif [ "$code" -eq 1 ]; then
-            echo "::error title=A retired name is still a live resource - ADR 079::The tree stopped naming it, so the source guard is green and will stay green. The resource still exists, still serves and still appears in the dashboard. Delete or rename it in the Cloudflare dashboard."
+            echo "::error title=A retired name is still live - ADR 079::The tree stopped naming it, so the source guard is green and will stay green. The step log names the limb and the record: a Cloudflare resource, a vendor product, price, entitlement or listing, or a GitHub environment. Rename or delete it in that console."
           fi
           exit "$code"
           NIKATRU_QUIET_EOF
@@ -1038,8 +1052,8 @@ jobs:
         timeout-minutes: 3
         env:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_READONLY_PRIVATE_KEY && secrets.APP_STORE_CONNECT_READONLY_KEY_ID || secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_READONLY_KEY_ID && secrets.APP_STORE_CONNECT_READONLY_PRIVATE_KEY || secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -1233,6 +1247,27 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.edge-shield.7 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Both sites' edge traffic is read and no Web Analytics beacon is injected
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_READ_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          set +e
+          node tooling/ops/check-site-analytics.mjs --cloudflare-read-paged
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            echo "::error title=The sites' analytics are UNKNOWN::The Web Analytics site list or a zone's page views could not be read. The step log names which; a token without Account Analytics Read or Zone Analytics Read on both zones is named as such. Unread is never a pass."
+          elif [ "$code" -eq 1 ]; then
+            echo "::error title=Web Analytics injects a browser beacon - ADR 103 section 2.2::Its automatic setup is on for a hostname of nikatru.com or rajasekarselvam.com, so the edge adds the beacon script to every HTML answer. Turn the automatic setup off for that hostname under Web Analytics in the Cloudflare dashboard."
+          fi
+          exit "$code"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.edge-shield.8 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
         continue-on-error: true
@@ -1634,10 +1669,135 @@ jobs:
           NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
         run: node tooling/ops/bridge-artifact.mjs upload
 
+  self-review:
+    name: Weekly self-review — the factory measured, three proposals filed and never applied
+    if: github.event.schedule == '45 7 * * 1' || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.self_review)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      exit: ${{ steps.review.outputs.exit }}
+    steps:
+      - name: Check out the private tree (generated)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ env.NIKATRU_PRIVATE_REPO }}
+          ref: ${{ github.event.client_payload.event == 'pull_request' && format('refs/pull/{0}/merge', github.event.client_payload.pr) || github.event.client_payload.sha || 'main' }}
+          ssh-key: ${{ secrets.PRIVATE_DEPLOY_KEY }}
+          persist-credentials: false
+      - name: Name the private commit (generated)
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_P_EVENT: ${{ github.event.client_payload.event || github.event_name }}
+          NIKATRU_P_REF: ${{ github.event.client_payload.ref || 'refs/heads/main' }}
+          NIKATRU_P_BASE_SHA: ${{ github.event.client_payload.base_sha }}
+          NIKATRU_P_BASE_REF: ${{ github.event.client_payload.base_ref }}
+          NIKATRU_P_PR: ${{ github.event.client_payload.pr }}
+          NIKATRU_P_PR_CREATED_AT: ${{ github.event.client_payload.pr_created_at }}
+          NIKATRU_P_DRAFT: ${{ github.event.client_payload.draft }}
+          NIKATRU_P_SHA: ${{ github.event.client_payload.sha }}
+        run: |
+          if [ "$NIKATRU_P_EVENT" = pull_request ]; then
+            set -- $(git cat-file -p HEAD | sed -n 's/^parent //p')
+            if [ "${2:-}" != "$NIKATRU_P_SHA" ]; then
+              echo "::error::refs/pull/$NIKATRU_P_PR/merge is not yet the merge of the dispatched head $NIKATRU_P_SHA (its second parent is ${2:-none}); GitHub recomputes it after a push — re-run this job"
+              exit 1
+            fi
+          fi
+          {
+            echo "NIKATRU_SHA=$(git rev-parse HEAD)"
+            echo "NIKATRU_HEAD_SHA=${NIKATRU_P_SHA:-$(git rev-parse HEAD)}"
+            echo "NIKATRU_EVENT_NAME=$NIKATRU_P_EVENT"
+            echo "NIKATRU_REF=$NIKATRU_P_REF"
+            echo "NIKATRU_REF_NAME=${NIKATRU_P_REF#refs/*/}"
+            echo "NIKATRU_BASE_SHA=$NIKATRU_P_BASE_SHA"
+            echo "NIKATRU_BASE_REF=$NIKATRU_P_BASE_REF"
+            echo "NIKATRU_PR=$NIKATRU_P_PR"
+            echo "NIKATRU_PR_CREATED_AT=$NIKATRU_P_PR_CREATED_AT"
+            echo "NIKATRU_DRAFT=$NIKATRU_P_DRAFT"
+          } >> "$GITHUB_ENV"
+      - uses: ./.github/actions/setup-node
+      - name: Measure the last ISO week
+        id: review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRIDGE_READ_SECRET: ${{ secrets.BRIDGE_READ_SECRET }}
+          NIKATRU_BRIDGE_OPS_URL: https://gh-bridge.nikatru.workers.dev/ops
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          set +e
+          node tooling/review/self-review.mjs --out "${RUNNER_TEMP}/self-review" --cache-dir "${RUNNER_TEMP}/self-review-cache" --last-iso-week --transport bridge > "${RUNNER_TEMP}/self-review.log" 2>&1
+          code=$?
+          set -e
+          cat "${RUNNER_TEMP}/self-review.log"
+          echo "exit=${code}" >> "$GITHUB_OUTPUT"
+          echo "self-review exit: ${code}"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.self-review.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Store self-review in the bridge's private home (generated)
+        if: ${{ !cancelled() }}
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: ${{ runner.temp }}/self-review
+          NIKATRU_ARTIFACT_NAME: self-review
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
+      - name: File the report and its three proposals against one durable issue
+        if: ${{ !cancelled() }}
+        env:
+          TITLE: 'Weekly self-review'
+          REVIEW_EXIT: ${{ steps.review.outputs.exit }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BRIDGE_READ_SECRET: ${{ secrets.BRIDGE_READ_SECRET }}
+          NIKATRU_BRIDGE_OPS_URL: https://gh-bridge.nikatru.workers.dev/ops
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          set +e
+          node tooling/review/self-review-issue.mjs --out "${RUNNER_TEMP}/self-review" --exit "${REVIEW_EXIT:-2}" --log "${RUNNER_TEMP}/self-review.log" --run-url "${RUN_URL}" --body-file "${RUNNER_TEMP}/self-review-issue.md"
+          built=$?
+          filed=2
+          if [ "$built" -eq 0 ]; then
+            node tooling/ops/ops-issue.mjs --kind self-review --body-file "${RUNNER_TEMP}/self-review-issue.md"
+            filed=$?
+          fi
+          set -e
+          if [ "$built" -ne 0 ] || [ "$filed" -ne 0 ]; then
+            echo "::error title=The weekly self-review did not reach its issue::The body could not be built, or the bridge refused or could not file it (ops-issue.mjs exit ${filed}). The step log names which. A report nobody receives is never a pass."
+            exit 2
+          fi
+          if [ "${REVIEW_EXIT:-2}" != "0" ]; then
+            echo "::error title=The weekly self-review is PARTIAL - filed, and red::self-review exited ${REVIEW_EXIT:-unset}: a budget or rate-limit stop, an HTTP or bridge stop, a list past its ceiling, or a refused input. The issue carries what was measured, marked PARTIAL, and no proposal. The step log names the stop."
+            exit 2
+          fi
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.self-review.5 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Store this job's red detail in the bridge's private home (generated)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: ${{ runner.temp }}/report-detail.md
+          NIKATRU_ARTIFACT_NAME: report-detail-ops-watch.self-review.${{ strategy.job-index }}
+          NIKATRU_IF_NO_FILES: ignore
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
+
   alert:
     name: Open or refresh the ops-watch issue
     needs:
-      [heartbeats, status, supabase-drift, prod-provenance, pages-deployments, runner-budget, glitchtip, config-drift, edge-shield, failure-ledger, renovate-backlog, code-scanning-age, tech-currency]
+      [heartbeats, status, supabase-drift, prod-provenance, pages-deployments, runner-budget, glitchtip, config-drift, edge-shield, failure-ledger, renovate-backlog, code-scanning-age, tech-currency, self-review]
     if: failure() && ((github.event.client_payload.event || github.event_name) == 'schedule' || ((github.event.client_payload.event || github.event_name) == 'workflow_dispatch' && inputs.unattended))
     runs-on: ubuntu-24.04
     timeout-minutes: 5

@@ -132,6 +132,7 @@ jobs:
     outputs:
       artifact: ${{ steps.bytes.outputs.artifact }}
       sha256: ${{ steps.bytes.outputs.sha256 }}
+      build_number: ${{ steps.buildno.outputs.build_number }}
     env:
       APP: ${{ needs.gate.outputs.app }}
     steps:
@@ -190,13 +191,28 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.4 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+      - name: The store build number lies above the last one the ledger recorded
+        id: buildno
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          set -euo pipefail
+          recorded="$(node tooling/ci/read-ledger-version-code.mjs --artifact-build-number "${APP}-windows-store")"
+          node tooling/ci/flutter-release-build.mjs --emit-build-number "$APP" windows-store --above "$recorded" >> "$GITHUB_OUTPUT"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.5 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Build windows
         env:
           RELEASE_LINE: ${{ steps.ver.outputs.release_line }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GLITCHTIP_DSN: ${{ secrets.GLITCHTIP_DSN }}
-        shell: node tooling/ci/quiet-step.mjs --name submit-windows-store.dry-run.5 --default-shell {0}
+        shell: node tooling/ci/quiet-step.mjs --name submit-windows-store.dry-run.6 --default-shell {0}
         run: node tooling/ci/flutter-release-build.mjs "${env:APP}" windows windows-store
       - name: Stage symbols-${{ needs.gate.outputs.app }}-windows-store-dry-run for this run's later jobs (generated)
         id: nikatru-stage-1
@@ -214,13 +230,13 @@ jobs:
           key: nikatru-handoff-symbols-${{ needs.gate.outputs.app }}-windows-store-dry-run-${{ github.run_id }}-${{ github.run_attempt }}
           enableCrossOsArchive: true
       - name: Install glitchtip-cli (pinned by version AND by digest)
-        shell: node tooling/ci/quiet-step.mjs --name submit-windows-store.dry-run.7 --default-shell {0}
+        shell: node tooling/ci/quiet-step.mjs --name submit-windows-store.dry-run.8 --default-shell {0}
         run: node tooling/ci/install-pinned-tool.mjs glitchtip-cli --out "$env:RUNNER_TEMP"
       - name: Upload the native debug symbols to GlitchTip
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.GLITCHTIP_TOKEN }}
           GLITCHTIP_DSN: ${{ secrets.GLITCHTIP_DSN }}
-        shell: node tooling/ci/quiet-step.mjs --name submit-windows-store.dry-run.8 --default-shell {0}
+        shell: node tooling/ci/quiet-step.mjs --name submit-windows-store.dry-run.9 --default-shell {0}
         run: |
           $ErrorActionPreference = 'Stop'
           $gt = Get-Content -Raw tooling/ops/glitchtip-project.json | ConvertFrom-Json
@@ -235,11 +251,11 @@ jobs:
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          dart run msix:create --version=${{ steps.ver.outputs.release_line }}.${{ github.run_number }}.0
+          dart run msix:create --version=${{ steps.ver.outputs.release_line }}.${{ steps.buildno.outputs.build_number }}.0
           node ../../tooling/store/msix-visual-name.mjs --app "$APP" "build/windows/msix/${APP}.msix"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.9 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.10 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: The MSIX carries the identity the register declares
         shell: bash
         run: |
@@ -248,16 +264,16 @@ jobs:
           node tooling/ci/assert-artifact-signed-msix.mjs --app "$APP" "apps/${APP}/build/windows/msix/${APP}.msix"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.10 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.11 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Dry-run the Microsoft Store submission
         env:
           MS_STORE_TENANT_ID: ${{ secrets.MS_STORE_TENANT_ID }}
           MS_STORE_CLIENT_ID: ${{ secrets.MS_STORE_CLIENT_ID }}
           MS_STORE_SELLER_ID: ${{ secrets.MS_STORE_SELLER_ID }}
-        shell: node tooling/ci/quiet-step.mjs --name submit-windows-store.dry-run.11 --default-shell {0}
+        shell: node tooling/ci/quiet-step.mjs --name submit-windows-store.dry-run.12 --default-shell {0}
         run: node tooling/release/submit-windows-store.mjs --dry-run --app "${env:APP}"
       - name: Name clearance holds for windows-store (owner HELD or PROVEN-FREE)
-        shell: node tooling/ci/quiet-step.mjs --name submit-windows-store.dry-run.12 --default-shell {0}
+        shell: node tooling/ci/quiet-step.mjs --name submit-windows-store.dry-run.13 --default-shell {0}
         run: node tooling/ci/assert-name-clearance.mjs --for-submission=windows-store
       - name: The app's Partner Center declarations are recorded (--for-submission)
         shell: bash
@@ -267,7 +283,7 @@ jobs:
           node tooling/ci/assert-sworn-store-files.mjs --for-submission=windows-store --app "$APP"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.13 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.14 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: The Microsoft Store screenshot set covers its declared device types
         shell: bash
         run: |
@@ -276,7 +292,7 @@ jobs:
           node tooling/ci/assert-play-device-coverage.mjs --for-submission=windows-store
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.14 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.15 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: A build that cannot sign in is not committed for certification (windows-store)
         shell: bash
         run: |
@@ -285,7 +301,7 @@ jobs:
           node tooling/ci/assert-channel-register.mjs --for-submission=windows-store
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.15 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.16 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Every target this channel ships to has its golden-path legs graded (windows-store)
         shell: bash
         run: |
@@ -294,7 +310,7 @@ jobs:
           node tooling/ci/assert-e2e-legs.mjs --for-submission=windows-store
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.16 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.17 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Hand the submit job this package's name and sha256
         id: bytes
         shell: bash
@@ -310,7 +326,7 @@ jobs:
           echo "${sum}  ${MSIX}"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.17 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.18 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Stage ${{ steps.bytes.outputs.artifact }} for this run's later jobs (generated)
         id: nikatru-stage-2
         shell: bash
@@ -337,7 +353,7 @@ jobs:
           node tooling/ci/record-deployment.mjs "${APP}-windows-store" --mode dry-run
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.19 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name submit-windows-store.dry-run.20 -- "$NIKATRU_SHELL" --noprofile --norc -eo pipefail "$NIKATRU_QUIET"
       - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
         continue-on-error: true
@@ -521,12 +537,12 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_RELEASE_ACCESS_KEY_ID: ${{ secrets.R2_RELEASE_ACCESS_KEY_ID }}
           R2_RELEASE_SECRET_ACCESS_KEY: ${{ secrets.R2_RELEASE_SECRET_ACCESS_KEY }}
-          RUN_NUMBER: ${{ github.run_number }}
+          BUILD_NUMBER: ${{ needs.dry-run.outputs.build_number }}
         run: |
           set -euo pipefail
           release_line="$(node tooling/ci/assert-app-versioning.mjs --emit "apps/${APP}" | sed -n 's/^release_line=//p')"
           node tooling/ci/r2-durable-copy.mjs --kind symbols --app "$APP" --channel windows-store \
-            --version "${release_line}.${RUN_NUMBER}" --build "$RUN_NUMBER" \
+            --version "${release_line}.${BUILD_NUMBER}" --build "$BUILD_NUMBER" \
             --dir "apps/${APP}/build/symbols/windows" --out "${RUNNER_TEMP}/symbols-record.json"
       - name: The windows-store artifact is within its store's size limit
         shell: bash
@@ -569,6 +585,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           LISTING_URL: ${{ inputs.listing_url }}
-          RUN_NUMBER: ${{ github.run_number }}
+          BUILD_NUMBER: ${{ needs.dry-run.outputs.build_number }}
           MSIX: apps/${{ needs.gate.outputs.app }}/build/windows/msix/${{ needs.gate.outputs.app }}.msix
-        run: node tooling/ci/record-deployment.mjs "${APP}-windows-store" --state in_review --listing-url "$LISTING_URL" --mode production --artifact "$MSIX" --build-number "$RUN_NUMBER" --symbols-record "${RUNNER_TEMP}/symbols-record.json"
+        run: node tooling/ci/record-deployment.mjs "${APP}-windows-store" --state certifying --listing-url "$LISTING_URL" --mode production --artifact "$MSIX" --build-number "$BUILD_NUMBER" --symbols-record "${RUNNER_TEMP}/symbols-record.json"

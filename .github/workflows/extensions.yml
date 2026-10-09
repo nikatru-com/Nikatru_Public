@@ -9,7 +9,7 @@ run-name: "Extensions · ${{ github.event.client_payload.sha }}"
 
 on:
   repository_dispatch:
-    types: [ci]
+    types: [tag]
   schedule: [{ cron: '53 20 * * *' }]
   workflow_dispatch:
     inputs:
@@ -1908,6 +1908,11 @@ jobs:
           unzip -q "release-assets/${TOOL}-firefox.zip" -d release-assets/unpacked-firefox
       - name: The AMO signer, from its locked island
         run: npm ci --ignore-scripts --prefix tooling/web-ext
+      - name: Firefox (AMO) — the listing title is cleared (PROVEN-FREE or HELD)
+        if: inputs.confirm == 'SUBMIT-TO-FIREFOX-AMO'
+        env:
+          TOOL: ${{ steps.tag.outputs.id }}
+        run: node tooling/ci/assert-extension-name-clearance.mjs --tool "$TOOL" --for-submission=amo
       - name: Firefox (AMO) — credentials present, or the owner step
         id: amo_arming
         if: inputs.confirm == 'SUBMIT-TO-FIREFOX-AMO'
@@ -1994,6 +1999,11 @@ jobs:
           LISTING_URL: ${{ steps.amo.outputs.listing_url }}
           RUN_NUMBER: ${{ github.run_number }}
         run: node tooling/ci/record-deployment.mjs "$TOOL-amo" --state in_review --listing-url "$LISTING_URL" --mode production --artifact "release-assets/${TOOL}-firefox.zip" --build-number "$RUN_NUMBER"
+      - name: Chrome Web Store — the listing title is cleared (PROVEN-FREE or HELD)
+        if: inputs.confirm == 'SUBMIT-TO-CHROME-WEB-STORE'
+        env:
+          TOOL: ${{ steps.tag.outputs.id }}
+        run: node tooling/ci/assert-extension-name-clearance.mjs --tool "$TOOL" --for-submission=chrome-webstore
       - name: Chrome Web Store — credentials present, or the owner step
         if: inputs.confirm == 'SUBMIT-TO-CHROME-WEB-STORE'
         env:
@@ -2049,6 +2059,11 @@ jobs:
           TOOL: ${{ steps.tag.outputs.id }}
           LISTING_URL: ${{ steps.cws.outputs.listing_url }}
         run: node tooling/ci/record-deployment.mjs "$TOOL-chrome-webstore" --state in_review --listing-url "$LISTING_URL"
+      - name: Edge Add-ons — the listing title is cleared (PROVEN-FREE or HELD)
+        if: inputs.confirm == 'SUBMIT-TO-EDGE-ADDONS'
+        env:
+          TOOL: ${{ steps.tag.outputs.id }}
+        run: node tooling/ci/assert-extension-name-clearance.mjs --tool "$TOOL" --for-submission=edge-addons
       - name: Edge Add-ons — credentials present, or the owner step
         if: inputs.confirm == 'SUBMIT-TO-EDGE-ADDONS'
         env:

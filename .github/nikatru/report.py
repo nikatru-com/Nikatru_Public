@@ -181,6 +181,10 @@ COLLECTED_DIR = '.nikatru-collected'
 # The answers a retry may cure (a gateway's; 0 is no answer at all), and the waits, in seconds,
 # before the second and third attempts.
 RETRY_STATUSES = (0, 502, 503, 504)
+# ⏱ 2026-10-09 (ci-noise-1009, lead e19de7 item 5): GitHub's answers BEHIND a bridge 502 that a retry may cure. A
+# GitHub 500 joins the gateway's: a 500 on one status write turned green runs 37883824894 and 37883613137 red at
+# `x ci/site-tokens success -> HTTP 502 (GitHub call failed)`. The bridge's OWN 500 (a binding unset) is not retried.
+RETRY_UPSTREAMS = (0, 500, 502, 503, 504)
 RETRY_DELAYS = (2, 6)
 
 
@@ -449,7 +453,7 @@ def post(url, secret, body, timeout, opener=urllib.request.urlopen, sleep=time.s
     raw = json.dumps(body, ensure_ascii=False).encode('utf-8')
     for attempt in range(len(RETRY_DELAYS) + 1):
         status, why, upstream = post_once(url, secret, raw, opener, timeout)
-        transient = status in RETRY_STATUSES and (status != 502 or upstream is None or upstream in RETRY_STATUSES)
+        transient = status in RETRY_STATUSES and (status != 502 or upstream is None or upstream in RETRY_UPSTREAMS)
         if not transient or attempt == len(RETRY_DELAYS):
             return status, why
         print(f'-- HTTP {status} is transient; retrying in {RETRY_DELAYS[attempt]} s', file=sys.stderr)

@@ -1313,6 +1313,15 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.10 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Build the iOS app once (warm, bounded)
+        id: warm
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          node tooling/store/capture-deadline.mjs --minutes 21 --evidence-dir "${RUNNER_TEMP}/capture-evidence/warm" -- node tooling/store/warm-native-build.mjs --app "$APP" --platform ios
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.11 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Provision throwaway confirmed user
         id: user
         env:
@@ -1324,7 +1333,7 @@ jobs:
           node tooling/e2e/provision_user.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.11 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.12 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Capture both sets
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -1337,10 +1346,10 @@ jobs:
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          node tooling/store/capture-deadline.mjs --minutes 30 -- node tooling/store/capture-play-screenshots.mjs --app "$APP" --channel ios-appstore
+          node tooling/store/capture-deadline.mjs --minutes 19 -- node tooling/store/capture-play-screenshots.mjs --app "$APP" --channel ios-appstore
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.12 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.13 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The captured sets satisfy the listing-asset guard
         id: listing
         run: |
@@ -1349,7 +1358,7 @@ jobs:
           node --single-threaded tooling/ci/assert-listing-assets.mjs --for-submission --channel ios-appstore
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.13 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.14 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The captured sets satisfy the device-coverage guard
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -1357,7 +1366,7 @@ jobs:
           node --single-threaded tooling/ci/assert-play-device-coverage.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.14 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.15 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Re-derive every set the register derives from this capture
         id: finish
         run: |
@@ -1369,7 +1378,7 @@ jobs:
           echo "paths=$(tr '\n' ' ' < "${RUNNER_TEMP}/finish-capture.txt")" >> "$GITHUB_OUTPUT"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.15 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.16 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every derived set was derived from the files in this tree
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -1377,17 +1386,17 @@ jobs:
           node tooling/ci/assert-derived-sets.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.16 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.17 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Capture the IAP review screenshots (one per auto-renewable product)
         id: iap
-        if: ${{ !cancelled() && steps.boot.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.boot.outcome == 'success' && steps.warm.outcome == 'success' }}
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          node tooling/store/capture-deadline.mjs --minutes 10 --evidence-dir "${RUNNER_TEMP}/capture-evidence/iap" -- node tooling/store/capture-iap-review.mjs --app "$APP"
+          node tooling/store/capture-deadline.mjs --minutes 8 --evidence-dir "${RUNNER_TEMP}/capture-evidence/iap" -- node tooling/store/capture-iap-review.mjs --app "$APP"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.17 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.18 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The review screenshots satisfy their guard (--for-submission)
         if: ${{ !cancelled() && steps.iap.outcome == 'success' }}
         run: |
@@ -1396,7 +1405,7 @@ jobs:
           node tooling/ci/assert-iap-review-screenshots.mjs --for-submission
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.18 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.19 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store FAILED-not-a-listing-set-${{ github.run_id }} in the bridge's private home (generated)
         if: failure()
         shell: bash
@@ -1418,7 +1427,7 @@ jobs:
           node --single-threaded tooling/store/measure-frame-ink.mjs "apps/${APP}/store/ios-appstore/screenshots" "apps/${APP}/store/ios-appstore/screenshots-ipad"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.20 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.21 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store ios-screenshots-${{ needs.gate.outputs.app }} in the bridge's private home (generated)
         if: ${{ !inputs.dry_run }}
         shell: bash
@@ -1486,7 +1495,7 @@ jobs:
           node tooling/ops/bridge-propose.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.24 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Purge the throwaway user
         if: always()
         env:
@@ -1504,7 +1513,7 @@ jobs:
           node tooling/e2e/purge.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.24 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.25 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
         continue-on-error: true

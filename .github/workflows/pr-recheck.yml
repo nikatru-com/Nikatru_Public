@@ -76,12 +76,40 @@ jobs:
             read_live
             still_ours
             if [ "$gate_url" = - ]; then
-              # (d) the head has no gate status yet: its run has not reported; wait for it, bounded.
-              if [ "$(date +%s)" -ge "$deadline" ]; then
-                unknown "no $NIKATRU_GATE_JOB status on $NIKATRU_P_HEAD_SHA after ${NIKATRU_WAIT_S}s"
+              # (d) no gate status yet: the bridge writes a head's statuses only when its run ENDS (report.ts), so this is
+              # normally the head's own run still building. Name it by its title, as (e) does, and judge ITS gate job.
+              own=""
+              for st in queued in_progress waiting pending requested; do
+                runs=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$NIKATRU_ROOT" --status "$st" --limit 100 --json databaseId,displayTitle,status) || unknown "the $NIKATRU_ROOT runs that are $st could not be listed"
+                found=$(jq -r --arg t "$NIKATRU_RUN_NAME · $NIKATRU_P_HEAD_SHA (PR #$NIKATRU_P_PR)" 'try ([.[] | select(.displayTitle == $t and .status != "completed" and (.databaseId | type) == "number") | .databaseId] | max // "" | tostring) catch "?"' <<<"$runs")
+                [ "$found" != "?" ] || unknown "the $NIKATRU_ROOT runs that are $st are not a run list"
+                if [ -n "$found" ] && { [ -z "$own" ] || [ "$found" -gt "$own" ]; }; then own="$found"; fi
+              done
+              if [ -n "$own" ]; then
+                oview=$(gh run view "$own" --repo "$GITHUB_REPOSITORY" --json status,jobs) || unknown "run $own could not be read"
+                ogate=$(jq -r --arg n "$NIKATRU_GATE_JOB" 'try ([.jobs[] | select(.name == $n)] as $g | if ($g | length) == 0 then "absent" elif ($g | length) == 1 and ($g[0].status | type) == "string" then $g[0].status else "" end) catch ""' <<<"$oview")
+                [ -n "$ogate" ] || unknown "run $own has more than one $NIKATRU_GATE_JOB job, or is not a run"
+                case "$ogate" in
+                  absent | queued | waiting | pending | requested)
+                    echo "run $own of $NIKATRU_P_HEAD_SHA (PR #$NIKATRU_P_PR) has not reached $NIKATRU_GATE_JOB ($ogate): it reads the body live; nothing re-run"
+                    exit 0
+                    ;;
+                esac
+                # its gate has started and may have read the old body: act on that run exactly as (b)/(c)/(e) do.
+                [ -n "$pinned" ] || deadline=$(( $(date +%s) + NIKATRU_WAIT_S ))
+                pinned="$own"
+                gate_url="$prefix$own"
+              elif [ -n "$pinned" ]; then
+                # the run pinned here has just completed; its status is on its way: judge that run itself.
+                gate_url="$prefix$pinned"
+              else
+                # neither a status nor a running run of this head: truly not found, so it stays fail-closed (r3).
+                if [ "$(date +%s)" -ge "$deadline" ]; then
+                  unknown "no $NIKATRU_GATE_JOB status and no running $NIKATRU_ROOT run of $NIKATRU_P_HEAD_SHA after ${NIKATRU_WAIT_S}s"
+                fi
+                sleep "$NIKATRU_POLL_S"
+                continue
               fi
-              sleep "$NIKATRU_POLL_S"
-              continue
             fi
             case "$gate_url" in
               "$prefix"*) rest="${gate_url#"$prefix"}" ;;
@@ -92,9 +120,9 @@ jobs:
             # (e) named a newer run of this PR's head whose gate may hold the old body's verdict: act on it.
             if [ -n "$pinned" ] && [ "$pinned" -gt "$id" ]; then id="$pinned"; fi
             view=$(gh run view "$id" --repo "$GITHUB_REPOSITORY" --json status,jobs) || unknown "run $id could not be read"
-            gate=$(jq -r --arg n "$NIKATRU_GATE_JOB" 'try ([.jobs[] | select(.name == $n)] as $g | if ($g | length) == 1 then "\(.status) \($g[0].databaseId) \($g[0].status)" else "" end) catch ""' <<<"$view")
+            gate=$(jq -r --arg n "$NIKATRU_GATE_JOB" 'try ([.jobs[] | select(.name == $n)] as $g | if ($g | length) == 1 then "\(.status) \($g[0].databaseId) \($g[0].status) \(if ($g[0].startedAt | type) == "string" and ($g[0].startedAt | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")) then $g[0].startedAt else "-" end)" else "" end) catch ""' <<<"$view")
             [ -n "$gate" ] || unknown "run $id has no single $NIKATRU_GATE_JOB job"
-            read -r run_status job_id job_status <<<"$gate"
+            read -r run_status job_id job_status job_started <<<"$gate"
             case "$job_status" in
               queued | waiting | pending | requested)
                 echo "$NIKATRU_GATE_JOB of run $id is $job_status: it has not read the body yet, and reads it live; nothing re-run"
@@ -126,6 +154,14 @@ jobs:
                 echo "run $other of $NIKATRU_P_HEAD_SHA (PR #$NIKATRU_P_PR) is newer and its $NIKATRU_GATE_JOB is $ogate: it may hold the old body's verdict; acting on run $other, not run $id"
                 pinned="$other"
                 continue
+              fi
+              # (f) its gate started at or after this recheck was dispatched: it read the body as it is now.
+              if [ "$job_started" != - ]; then
+                self=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/${GITHUB_RUN_ID:-}" --jq .created_at) || self=""
+                if [[ "$self" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] && ! [[ "$job_started" < "$self" ]]; then
+                  echo "$NIKATRU_GATE_JOB of run $id started at $job_started, after this recheck was dispatched ($self): its gate started after the edit and read the body as it is now; nothing re-run"
+                  exit 0
+                fi
               fi
               gh run rerun "$id" --job "$job_id" --repo "$GITHUB_REPOSITORY"
               echo "re-ran $NIKATRU_GATE_JOB of run $id for $NIKATRU_P_HEAD_SHA: it reads the body as it is now"

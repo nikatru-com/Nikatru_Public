@@ -470,6 +470,16 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guard-meta.19 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Guard headers cite code pinned to a commit, never by a bare line number
+        env:
+          GUARD_HEADER_CITATIONS_BASE: ${{ github.event.client_payload.base_ref && format('origin/{0}', github.event.client_payload.base_ref) || '' }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          node tooling/ci/assert-guard-header-citations.mjs
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guard-meta.20 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
@@ -1613,6 +1623,15 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.18 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Every extension listing title carries a sound clearance record
+        if: ${{ !cancelled() }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          node tooling/ci/assert-extension-name-clearance.mjs
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.19 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every Linux store channel can produce a complete snapcraft recipe
         if: ${{ !cancelled() }}
         run: |
@@ -1621,7 +1640,7 @@ jobs:
           node tooling/ci/assert-snapcraft-generable.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.19 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.20 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The Play listing graphics exist, are the sourced size, and say where they came from
         if: ${{ !cancelled() }}
         run: |
@@ -1630,7 +1649,7 @@ jobs:
           node --single-threaded tooling/ci/assert-listing-assets.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.20 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.21 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The Play screenshot set spans enough device types
         if: ${{ !cancelled() }}
         run: |
@@ -1639,7 +1658,7 @@ jobs:
           node tooling/ci/assert-play-device-coverage.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.21 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.22 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every auto-renewable subscription has an App Store review screenshot
         if: ${{ !cancelled() }}
         run: |
@@ -1648,7 +1667,7 @@ jobs:
           node --single-threaded tooling/ci/assert-iap-review-screenshots.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.22 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The Data safety and content-rating declarations still describe the code
         if: ${{ !cancelled() }}
         run: |
@@ -1657,7 +1676,7 @@ jobs:
           node tooling/ci/assert-play-declarations.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.24 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every store's crash-data answer matches what the crash sink receives
         if: ${{ !cancelled() }}
         run: |
@@ -1666,7 +1685,7 @@ jobs:
           node tooling/ci/assert-crash-declarations.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.24 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.25 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The sworn store declarations have not regressed toward the stamp
         if: ${{ !cancelled() }}
         run: |
@@ -1675,7 +1694,7 @@ jobs:
           node tooling/ci/assert-sworn-store-files.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.25 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.26 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every store channel declares the adult audience, and Windows answers IARC as Play does
         if: ${{ !cancelled() }}
         run: |
@@ -1684,7 +1703,7 @@ jobs:
           node tooling/ci/assert-store-audience.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.26 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.27 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The advertising declarations still describe the shipped tree
         if: ${{ !cancelled() }}
         run: |
@@ -1693,7 +1712,7 @@ jobs:
           node tooling/ci/assert-ads-declarations.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.27 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.28 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: No release build from an ungated commit, no publish unrecorded
         if: ${{ !cancelled() }}
         run: |
@@ -1702,7 +1721,7 @@ jobs:
           node tooling/ci/assert-release-provenance.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.28 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.29 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: No release lane finishes with the artifact stuck inside the run
         if: ${{ !cancelled() }}
         run: |
@@ -1711,7 +1730,7 @@ jobs:
           node tooling/ci/assert-release-durable.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.29 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.30 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every release file is attested and verified, and only a release job can sign
         if: ${{ !cancelled() }}
         run: |
@@ -1720,7 +1739,7 @@ jobs:
           node tooling/ci/assert-build-provenance.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.30 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.31 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The release-record guard can still fail (mutation matrix)
         if: ${{ !cancelled() }}
         run: |
@@ -1729,7 +1748,7 @@ jobs:
           node tooling/ci/assert-release-json.mjs --self-test
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.31 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.32 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Nothing is compiled into an artifact that was not declared shippable
         if: ${{ !cancelled() }}
         run: |
@@ -1738,7 +1757,7 @@ jobs:
           node tooling/ci/assert-no-secret-defines.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.32 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.33 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Obfuscation and symbol retention are one increment or neither
         if: ${{ !cancelled() }}
         run: |
@@ -1747,7 +1766,7 @@ jobs:
           node tooling/ci/assert-obfuscation-coupled.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.33 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.34 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every Android channel's build compiles in its pinned signer and checks it at boot
         if: ${{ !cancelled() }}
         run: |
@@ -1756,7 +1775,7 @@ jobs:
           node tooling/ci/assert-runtime-signer-check.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.34 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.35 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: No shipped client overrides TLS certificate trust
         if: ${{ !cancelled() }}
         run: |
@@ -1765,7 +1784,7 @@ jobs:
           node tooling/ci/assert-no-tls-pinning.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.35 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.36 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The web channel declares a cache policy a deploy can be seen through
         if: ${{ !cancelled() }}
         run: |
@@ -1775,7 +1794,7 @@ jobs:
           node tooling/ci/assert-web-cache-policy.mjs . $sites
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.36 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.37 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Release lanes cover every app, and no guard hides a lane
         if: ${{ !cancelled() }}
         run: |
@@ -1784,7 +1803,7 @@ jobs:
           node tooling/ci/assert-release-lane-generic.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.37 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.38 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Nothing is published without being launched once
         if: ${{ !cancelled() }}
         run: |
@@ -1793,7 +1812,7 @@ jobs:
           node tooling/ci/assert-launch-smoke.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.38 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.39 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: One app_id derives every store identity, on every platform
         if: ${{ !cancelled() }}
         run: |
@@ -1802,7 +1821,7 @@ jobs:
           node tooling/ci/assert-store-identity.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.39 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.40 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every iOS entitlements file is derived from its declared Apple capabilities
         if: ${{ !cancelled() }}
         run: |
@@ -1811,7 +1830,7 @@ jobs:
           node tooling/ci/assert-apple-entitlements.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.40 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.41 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The App Store JWS verifier trusts Apple Root CA G3 and only it
         if: ${{ !cancelled() }}
         run: |
@@ -1820,7 +1839,7 @@ jobs:
           node tooling/ci/assert-apple-root-pin.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.41 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.42 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: No live resource carries a retired name [ADR 079]
         if: ${{ !cancelled() }}
         run: |
@@ -1829,7 +1848,7 @@ jobs:
           node tooling/ci/assert-retired-names.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.42 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.43 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: No customer-visible surface names a retired product [ADR 074]
         if: ${{ !cancelled() }}
         run: |
@@ -1838,7 +1857,7 @@ jobs:
           node tooling/ci/assert-retired-names-visible.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.43 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.44 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every NIKATRU hostname is the apex or one label deep [ADR 080]
         if: ${{ !cancelled() }}
         run: |
@@ -1847,7 +1866,7 @@ jobs:
           node tooling/ci/assert-hostname-depth.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.44 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.45 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: No submission endangers the store identity
         if: ${{ !cancelled() }}
         run: |
@@ -1856,7 +1875,7 @@ jobs:
           node tooling/ci/assert-submission-safety.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.45 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.46 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: No publishing lane finishes without a [10]D-9 record
         if: ${{ !cancelled() }}
         run: |
@@ -1865,7 +1884,7 @@ jobs:
           node tooling/ci/assert-publish-records.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.46 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.47 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The Android module pins the API level Google Play requires
         if: ${{ !cancelled() }}
         run: |
@@ -1874,7 +1893,7 @@ jobs:
           node tooling/ci/assert-android-target-sdk.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.47 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.48 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: No store artifact is the demo build
         if: ${{ !cancelled() }}
         run: |
@@ -1883,7 +1902,7 @@ jobs:
           node tooling/ci/assert-store-build-config.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.48 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.49 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: An app that pulls flutter_inappwebview carries its native build waivers
         if: ${{ !cancelled() }}
         run: |
@@ -1892,7 +1911,7 @@ jobs:
           node tooling/ci/assert-inappwebview-waivers.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.49 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.50 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The store vocabulary has one home, and every word in it is used
         if: ${{ !cancelled() }}
         run: |
@@ -1901,7 +1920,7 @@ jobs:
           node tooling/ci/assert-store-vocabulary.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.50 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.51 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The apps.gov.in listing media is still the derivation of the Play set
         if: ${{ !cancelled() }}
         run: |
@@ -1910,7 +1929,7 @@ jobs:
           node --single-threaded tooling/ci/assert-apps-gov-in-media.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.51 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.52 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The app id has one rule, and the Worker, the callers and the schemas agree with it
         if: ${{ !cancelled() }}
         run: |
@@ -1919,7 +1938,7 @@ jobs:
           node tooling/ci/assert-app-id-contract.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.52 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.53 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every derived listing set was derived from the files in this tree
         if: ${{ !cancelled() }}
         run: |
@@ -1928,7 +1947,7 @@ jobs:
           node tooling/ci/assert-derived-sets.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.53 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.54 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every build input a signing job downloads is checked against a pinned sha256 first
         if: ${{ !cancelled() }}
         run: |
@@ -1937,7 +1956,7 @@ jobs:
           node tooling/ci/assert-signing-inputs-pinned.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.54 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.guards-store.55 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
@@ -3042,6 +3061,35 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.16 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: RED CONTROL — the probe's tap observer that no longer logs is refused, naming apps/probe
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          OBS=apps/probe/lib/state/notification_tap_observer.dart
+          set +e
+          node tooling/ci/assert-capability-register.mjs > "$RUNNER_TEMP/emitter-green.log" 2>&1
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/emitter-green.log"
+          echo "assert-capability-register exit: $code"
+          if [ "$code" -ne 0 ]; then echo "::error::assert-capability-register exited $code on the stamped probe"; exit 1; fi
+          if ! grep -qF 'apps/probe (NotificationTapObserver in apps/probe/lib/state/notification_tap_observer.dart logs kEvent' "$RUNNER_TEMP/emitter-green.log"; then echo "::error::the [13]T-9 emitter limb did not grade the probe's NotificationTapObserver"; exit 1; fi
+          cp "$OBS" "$RUNNER_TEMP/probe-tap-observer.dart"
+          echo "import { readFileSync, writeFileSync } from 'node:fs'; const p = process.argv[2]; const lines = readFileSync(p, 'utf8').split(String.fromCharCode(10)); const kept = lines.filter((l) => !l.includes('_analytics.log(kEvent')); if (lines.length - kept.length !== 1) { console.error('the one _analytics.log(kEvent line was not found once in ' + p); process.exit(3); } writeFileSync(p, kept.join(String.fromCharCode(10)));" > "$RUNNER_TEMP/remove-tap-log.mjs"
+          node "$RUNNER_TEMP/remove-tap-log.mjs" "$OBS"
+          set +e
+          node tooling/ci/assert-capability-register.mjs > "$RUNNER_TEMP/emitter-red.log" 2>&1
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/emitter-red.log"
+          echo "assert-capability-register exit: $code"
+          cp "$RUNNER_TEMP/probe-tap-observer.dart" "$OBS"
+          if [ "$code" -ne 1 ]; then echo "::error::assert-capability-register exited $code with the probe's _analytics.log(kEvent line removed; the red control requires exactly 1"; exit 1; fi
+          if ! grep -qF 'apps/probe — carries no working `notification_opened` emitter' "$RUNNER_TEMP/emitter-red.log"; then echo "::error::assert-capability-register exited 1 without naming apps/probe's emitter"; exit 1; fi
+          node tooling/ci/assert-capability-register.mjs
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.17 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: RED CONTROL — the probe without its review seam is COVERAGE LOST, naming apps/probe
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3061,7 +3109,7 @@ jobs:
           node tooling/ci/assert-seams-wired.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.17 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.18 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: RED CONTROL — the probe without its capture boards fails the capture precheck, naming the file
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3070,7 +3118,7 @@ jobs:
           node "$RUNNER_TEMP/remove-and-restore.mjs" apps/probe/integration_test/store_screenshots_test.dart "$RUNNER_TEMP/probe-boards.dart" tooling/store/capture-precheck.mjs --app probe --channel android-play
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.18 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.19 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: RED CONTROL — the probe without its e2e suite fails the leg guard, naming the file
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3079,7 +3127,7 @@ jobs:
           node "$RUNNER_TEMP/remove-and-restore.mjs" apps/probe/integration_test/app_test.dart "$RUNNER_TEMP/probe-app-test.dart" tooling/ci/assert-e2e-legs.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.19 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.20 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The stamped probe declares mobile IAP pending and wires its store bridge
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3094,7 +3142,7 @@ jobs:
           if ! grep -qF '2 app(s) declare mobile IAP (1 live, 1 pending), each wired through BillingStoreWiring (2 of 2)' "$RUNNER_TEMP/iap-green.log"; then echo "::error::limb 6 did not count app #1 live and the probe pending, both wired"; exit 1; fi
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.20 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.21 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: RED CONTROL — the probe's store bridge set back to null is refused, naming the file
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3114,7 +3162,7 @@ jobs:
           node tooling/ci/assert-app-yaml.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.21 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.22 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The new-product plan reads the stamped probe, and only its name clearance and price row are the agent's
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3122,7 +3170,7 @@ jobs:
           node tooling/kit/new-product.mjs plan probe --check --expect-next "name clearance,price row"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.22 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: SHOW-1 — probe is in the catalogue, and a RE-STAMP changes nothing
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3139,7 +3187,7 @@ jobs:
           git checkout -- catalog/apps.json sites/_shared/_data/apps.json
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.24 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Default stamp claims NO Worker, NO D1 and NO R2
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3147,7 +3195,7 @@ jobs:
           node tooling/ci/assert-clone-contract.mjs --client probe
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.24 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.25 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Stamped app is dart format-clean
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3157,7 +3205,7 @@ jobs:
           diff -ru "$RUNNER_TEMP/probe-as-stamped" apps/probe
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.25 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.26 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Stamp the opt-in backend app
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3166,7 +3214,7 @@ jobs:
           node tooling/kit/stamp-app.mjs --vars tooling/bricks/app/_probe_backend_vars.json --overwrite
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.26 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.27 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The new-product plan reads the stamped backend probe, and only its provision steps are added
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3174,7 +3222,7 @@ jobs:
           node tooling/kit/new-product.mjs plan probeapi --check --expect-next "name clearance,backend,crash sink,price row"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.27 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.28 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: A scratch service stamps from the Worker template, and the plan reads it as a service
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3184,7 +3232,7 @@ jobs:
           node tooling/kit/new-product.mjs plan probesvc --check --expect-next "register row,backend,crash sink,monitor row"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.28 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.29 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Stamped backend app is dart format-clean
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3194,7 +3242,7 @@ jobs:
           diff -ru "$RUNNER_TEMP/probeapi-as-stamped" apps/probeapi
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.29 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.30 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The analytics contract grades the stamped backend Worker's health route (apps=3)
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3211,7 +3259,7 @@ jobs:
           if ! grep -qE 'ok apps=3([^0-9]|$)' "$RUNNER_TEMP/analytics-backend.log"; then echo "::error::assert-analytics-contract exited 0 without an apps=3 line; the stamped backend was not in its subject"; exit 1; fi
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.30 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.31 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: A bad app id is refused before anything is written
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3230,7 +3278,7 @@ jobs:
           if [ -e apps/habit_tracker ]; then echo "::error::apps/habit_tracker exists after a refused stamp"; exit 1; fi
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.31 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.32 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: A stamped Worker typechecks and passes the suite it inherits
         working-directory: services/probeapi-api
         run: |
@@ -3241,7 +3289,7 @@ jobs:
           npm test
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.32 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.33 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The stamped Worker is not an identity deleter
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3249,7 +3297,7 @@ jobs:
           node tooling/ci/assert-erasure-reach.mjs --stamped services/probeapi-api
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.33 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.34 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The app spec is one validated input contract
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3257,7 +3305,7 @@ jobs:
           node tooling/ci/assert-input-contract.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.34 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.35 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: A stamped app claims only platforms it is built for
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3265,7 +3313,7 @@ jobs:
           node tooling/ci/assert-stamp-platforms.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.35 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.36 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: RED CONTROL — the probe without its linux/ folder is refused, naming apps/probe
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3283,7 +3331,7 @@ jobs:
           node tooling/ci/assert-stamp-platforms.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.36 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.37 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Stamped app asserts its own chassis properties
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3291,7 +3339,7 @@ jobs:
           node tooling/ci/assert-stamp-properties.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.37 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.38 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The stamped app carries a done-record, and its DoD items really run
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3299,7 +3347,7 @@ jobs:
           node tooling/ci/assert-app-dod.mjs . --require-stamped
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.38 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.39 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Analyze + test the stamped app
         working-directory: apps/probe
         run: |
@@ -3310,7 +3358,7 @@ jobs:
           flutter test
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.39 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.40 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: A fresh stamp really builds for web
         working-directory: apps/probe
         run: |
@@ -3319,7 +3367,7 @@ jobs:
           flutter build web --pwa-strategy=none --no-web-resources-cdn
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.40 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.41 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Linux build deps for the native probe build
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3330,7 +3378,7 @@ jobs:
             libsecret-1-dev libjsoncpp-dev libcurl4-openssl-dev
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.41 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.42 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: A fresh stamp really builds natively (linux)
         working-directory: apps/probe
         run: |
@@ -3339,7 +3387,7 @@ jobs:
           flutter build linux --debug
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.42 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.43 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: A fresh stamp satisfies the deploy's self-hosted fallback fonts step
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3347,7 +3395,7 @@ jobs:
           node tooling/web/self-host-fallback-fonts.mjs --check apps/probe/build/web
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.43 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.44 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every asset the build actually shipped has a licence row
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3355,7 +3403,7 @@ jobs:
           node tooling/ci/assert-licence-register.mjs . --bundle apps/probe/build/web/assets --app probe
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.44 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.45 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Every package file each app ships has the licence row its stamp wrote
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3363,7 +3411,7 @@ jobs:
           node tooling/ci/gen-app-licence-rows.mjs "${{ github.workspace }}" --check
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.45 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.46 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: RED CONTROL — the probe's licence rows mutated (a planted file, a phantom row, a row removed), the bundle walk and the generator both refuse
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3371,7 +3419,7 @@ jobs:
           node tooling/ci/licence-row-red-control.mjs . --app probe --bundle apps/probe/build/web/assets
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.46 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.47 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Backend stamp has a Worker + APP_DB but still no per-app R2
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3379,7 +3427,7 @@ jobs:
           node tooling/ci/assert-clone-contract.mjs --client probe --backend probeapi
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.47 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.48 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The provisioner's config surgery still targets APP_DB, not the shared binding
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3387,7 +3435,7 @@ jobs:
           node tooling/scripts/provision-backend.mjs probeapi --self-check
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.48 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.49 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Backend stamp derived its own web origin, API host and release id
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3395,7 +3443,7 @@ jobs:
           node tooling/ci/assert-stamp-text-fidelity.mjs --vars tooling/bricks/app/_probe_backend_vars.json --service services/probeapi-api
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.49 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.50 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Revert the catalogue — both probes are throwaway
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3403,7 +3451,7 @@ jobs:
           git checkout -- catalog/apps.json sites/_shared/_data/apps.json
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.50 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.51 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Analyze the stamped backend app
         working-directory: apps/probeapi
         run: |
@@ -3414,7 +3462,7 @@ jobs:
           flutter test
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.51 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.52 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The WHOLE workspace still resolves from the root with stamped apps on it
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3422,7 +3470,7 @@ jobs:
           flutter pub get
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.52 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.53 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The stamped probes' Apple audits are graded as preview, app #1's as sworn
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3430,7 +3478,7 @@ jobs:
           node tooling/ci/assert-apple-privacy-manifest.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.53 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.54 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Revert the root pubspec + lockfile — both probes are throwaway
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
@@ -3438,7 +3486,7 @@ jobs:
           git checkout -- pubspec.yaml pubspec.lock
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.54 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.55 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Typecheck + dry-run the stamped service
         working-directory: services/probeapi-api
         run: |
@@ -3449,7 +3497,7 @@ jobs:
           npx wrangler deploy --dry-run
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.55 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ci.app-brick.56 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()

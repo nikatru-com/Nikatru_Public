@@ -372,6 +372,7 @@ jobs:
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.18 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Run integration tests (headless Chrome)
         id: drive
+        timeout-minutes: 22
         working-directory: apps/${{ matrix.app }}
         env:
           SUPABASE_URL: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_URL || '' }}

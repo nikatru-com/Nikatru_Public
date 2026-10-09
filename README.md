@@ -5,8 +5,8 @@ This repository holds workflows and nothing else. Every job checks out the priva
 repository at the commit it was dispatched for, with a read-only deploy key, and reports its
 verdict back to that repository. It is generated: a pull request here is not how it changes.
 
-- **Triggers**: `repository_dispatch` (types `ci` and `main`, sent by the bridge Worker for a
-  pull request or a push in the private repository), plus `workflow_dispatch` and `schedule`.
+- **Triggers**: `repository_dispatch` (types `ci`, `main` and `tag`, sent by the bridge Worker for a
+  pull request, a push of main or a push of a tag in the private repository), plus `workflow_dispatch` and `schedule`.
   `e2e.yml` also runs on `e2e`, against the head of a private pull request (sent by the bridge on a `run-e2e` label of the pull request, or the maintainer).
   `pr-recheck.yml` runs on the bridge's `nikatru-pr-recheck` (a pull request body or base
   edit, or a draft conversion) and re-runs only the gate job of the ONE run named by the newest
@@ -41,7 +41,7 @@ verdict back to that repository. It is generated: a pull request here is not how
   `BRIDGE_ARTIFACT_SECRET` (signs a private artifact upload; held only by the private-artifact
   steps), plus what each workflow reads.
 
-## Workflows (34)
+## Workflows (35)
 
 - `apple-expiry-write.yml`
 - `autopilot-watch.yml`
@@ -77,3 +77,4 @@ verdict back to that repository. It is generated: a pull request here is not how
 - `time-travel.yml`
 - `trufflehog.yml`
 - `update-goldens.yml`
+- `web-preview.yml` — reports `web-preview`
