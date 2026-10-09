@@ -392,8 +392,13 @@ jobs:
           set -euo pipefail
           export CHROME_EXECUTABLE="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium-browser)"
           echo "Chrome: $CHROME_EXECUTABLE"
-          chromedriver --port=4444 &
+          # 🔴 chromedriver's own output goes to a FILE and the trap reaps it on EVERY exit
+          # (2026-10-09 · e2e-unhang). Started with `&` on the step's stdout, it outlived a
+          # failed drive (`set -e` left before the `kill` below), held the step's output pipe
+          # open, and the step hung to the job's 30-minute limit with drive.log never printed.
+          chromedriver --port=4444 > "${RUNNER_TEMP}/chromedriver.log" 2>&1 &
           CHROMEDRIVER_PID=$!
+          trap 'kill "$CHROMEDRIVER_PID" 2>/dev/null || true' EXIT
           sleep 3
           # why: EN-08 — how the full walk signs in, decided (never defaulted):
           # the form on a stack whose Turnstile key is an always-pass TEST key
@@ -472,10 +477,22 @@ jobs:
             --dart-define=E2E_SIGN_IN="$E2E_SIGN_IN" \
             --dart-define=E2E_PENDING_FLOWS="$E2E_PENDING_FLOWS" \
             --dart-define=E2E_APP_ID="$E2E_APP_ID" 2>&1 | tee "${RUNNER_TEMP}/drive.log"
-          kill "$CHROMEDRIVER_PID" || true
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.19 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Store e2e-screenshots-${{ matrix.app }}-drive-logs in the bridge's private home (generated)
+        if: always() && steps.drive.outcome != 'skipped'
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        env:
+          NIKATRU_PATHS: |
+            ${{ runner.temp }}/drive.log
+            ${{ runner.temp }}/chromedriver.log
+          NIKATRU_ARTIFACT_NAME: e2e-screenshots-${{ matrix.app }}-drive-logs
+          NIKATRU_IF_NO_FILES: warn
+          BRIDGE_ARTIFACT_SECRET: ${{ secrets.BRIDGE_ARTIFACT_SECRET }}
+          NIKATRU_BRIDGE_ARTIFACT_URL: https://gh-bridge.nikatru.workers.dev/artifact
+        run: node tooling/ops/bridge-artifact.mjs upload
       - name: Surface the failing assertion
         if: failure() && steps.drive.outcome == 'failure'
         run: |
@@ -513,7 +530,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.20 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.21 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The full walk signed in the way this run expected
         if: steps.drive.outcome == 'success'
         run: |
@@ -522,7 +539,7 @@ jobs:
           node tooling/e2e/sign_in_via.mjs --grade "${RUNNER_TEMP}/drive.log"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.21 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.22 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The exported CSV holds the rows the server held
         if: steps.drive.outcome == 'success' && (inputs.pending_flows || 'skip') == 'run'
         run: |
@@ -531,7 +548,7 @@ jobs:
           node tooling/e2e/verify_export_csv.mjs "${RUNNER_TEMP}/drive.log" "$HOME/Downloads"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.22 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Verify the row landed in live D1
         env:
           E2E_USER_ID: ${{ steps.user.outputs.user_id }}
@@ -544,7 +561,7 @@ jobs:
           node tooling/e2e/verify_row.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.23 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.24 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The Workers trust exactly one issuer (positive, both targets)
         env:
           SUPABASE_URL: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
@@ -557,7 +574,7 @@ jobs:
           node tooling/e2e/assert_one_issuer.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.24 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.25 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Erase the delete-leg account headlessly (captcha-gated stack)
         if: env.E2E_EXPECT_CAPTCHA_GATE == 'yes'
         env:
@@ -575,7 +592,7 @@ jobs:
           node tooling/e2e/delete_headless.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.25 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.26 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Verify the in-app deletion really purged (leg 6)
         env:
           SUPABASE_URL: ${{ ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'selfhosted' && secrets.SELFHOSTED_SUPABASE_URL || ((github.event.client_payload.inputs.auth_target || inputs.auth_target) || 'production') == 'production' && secrets.SUPABASE_URL || '' }}
@@ -590,7 +607,7 @@ jobs:
           node tooling/e2e/verify_purged.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.26 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.27 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Verify the consent artifact landed in platform_db
         env:
           E2E_APP_ID: ${{ matrix.app }}
@@ -605,7 +622,7 @@ jobs:
           node tooling/e2e/verify_consent.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.27 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.28 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The captured frames carry drawn text
         if: steps.drive.outcome == 'success'
         run: |
@@ -614,7 +631,7 @@ jobs:
           node --single-threaded tooling/e2e/assert-frames-carry-text.mjs apps/${{ matrix.app }}/screenshots
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.28 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.29 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store e2e-screenshots-${{ matrix.app }} in the bridge's private home (generated)
         if: always() && steps.user.outcome != 'skipped'
         shell: bash
@@ -644,7 +661,7 @@ jobs:
           node tooling/e2e/purge.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.30 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.31 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Purge the delete-leg user too (already gone on a green run)
         if: always() && steps.delete_user.outcome != 'skipped'
         env:
@@ -660,7 +677,7 @@ jobs:
           node tooling/e2e/purge.mjs
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.31 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name e2e.e2e.32 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
