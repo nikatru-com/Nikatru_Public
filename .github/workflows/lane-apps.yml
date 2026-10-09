@@ -205,6 +205,7 @@ jobs:
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
           git add -A
           node tooling/app-yaml/render.mjs
+          node --single-threaded tooling/store/render-linux-icons.mjs
           node tooling/app-yaml/render-privacy.mjs
           rm -f sites/_shared/_data/apps.json
           node tooling/sites/generate-apps-data.mjs

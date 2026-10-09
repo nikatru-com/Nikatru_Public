@@ -1194,7 +1194,7 @@ jobs:
           { printf '%s\n\n' "$note"; cat <<'BODY'
           The nightly **E2E (live)** run is red. It runs unattended at 03:17 UTC against
           LIVE Supabase auth, the live Cloudflare Worker and live D1 — so a failure may
-          mean the deployed Subly app is broken for real users, not merely that a test
+          mean the deployed app is broken for real users, not merely that a test
           is flaky. Treat it as production until proven otherwise.
 
           **This issue is reused.** Every later nightly failure is added here as a
