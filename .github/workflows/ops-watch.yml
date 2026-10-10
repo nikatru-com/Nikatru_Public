@@ -307,6 +307,29 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.heartbeats.12 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: No box image is floating, superseded 90 days, or behind a security fix
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_READ_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          set +e
+          node tooling/ops/check-box-image-currency.mjs --cloudflare-read-paged
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            # NO BACKTICKS ANYWHERE IN THESE STRINGS (see the analytics step above).
+            echo "::error title=Box image currency is UNKNOWN - nothing was graded::The runtime manifest, a Docker Hub tag list or an upstream's advisories could not be read, or a running image is not in the reader's upstream table. NOTHING about those images is known, and that is never a pass. The step log names what could not be read."
+          elif [ "$code" -eq 1 ]; then
+            echo "::error title=A box image is floating, months behind, or missing a security fix::The step log names the box, the image, and the advisory or release. Upgrade it on the box with the box runbook step (back up, change, verify), pin a release tag and digest, and edit tooling/boxes/BOX.json in the same change."
+          fi
+          exit "$code"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.heartbeats.13 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
         continue-on-error: true
