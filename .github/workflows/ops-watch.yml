@@ -1393,9 +1393,9 @@ jobs:
           code=$?
           set -e
           if [ "$code" -eq 2 ]; then
-            echo "::error title=The guard yield is UNKNOWN::tooling/guard-yield.json or tooling/enforcement-index.json could not be read, so nothing about guard yield is known from this run. The step log names which."
+            echo "::error title=The guard yield is UNKNOWN::tooling/guard-yield.json, tooling/enforcement-index.json or a test file tooling/ci/test/coverage-manifest.json keys could not be read, so nothing about guard yield is known from this run. The step log names which."
           elif [ "$code" -eq 1 ]; then
-            echo "::error title=The guard yield is stale, blind, or not acted on::asOf is past MAX_AGE_DAYS (re-fetch with triage-failed-runs.mjs --yield), the unattributed share is over its limit (give the signatures a guard, then guard-yield.mjs --reattribute), or a zero-catch guard has no KEEP/MERGE/RETIRE. The step log names each."
+            echo "::error title=The guard yield is stale, blind, or not acted on::asOf is past MAX_AGE_DAYS (re-fetch with triage-failed-runs.mjs --yield), the unattributed share is over its limit (give the signatures a guard, then guard-yield.mjs --reattribute), or a zero-catch guard has no KEEP/MERGE/RETIRE, or a KEEP's mutationTest does not resolve in the test file it names (guard-yield.mjs --reattribute re-derives an exposure KEEP's). The step log names each."
           fi
           exit "$code"
           NIKATRU_QUIET_EOF
