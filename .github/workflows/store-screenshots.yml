@@ -1124,7 +1124,7 @@ jobs:
     if: ${{ inputs.channel == 'ios-appstore' }}
     needs: gate
     runs-on: macos-26
-    timeout-minutes: 60
+    timeout-minutes: 90
     permissions:
       contents: read
       id-token: write
@@ -1290,7 +1290,7 @@ jobs:
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          node tooling/store/capture-deadline.mjs --minutes 21 --evidence-dir "${RUNNER_TEMP}/capture-evidence/warm" -- node tooling/store/warm-native-build.mjs --app "$APP" --platform ios
+          node tooling/store/capture-deadline.mjs --minutes 27 --evidence-dir "${RUNNER_TEMP}/capture-evidence/warm" -- node tooling/store/warm-native-build.mjs --app "$APP" --platform ios
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.11 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
@@ -1318,7 +1318,7 @@ jobs:
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          node tooling/store/capture-deadline.mjs --minutes 19 -- node tooling/store/capture-play-screenshots.mjs --app "$APP" --channel ios-appstore
+          node tooling/store/capture-deadline.mjs --minutes 33 -- node tooling/store/capture-play-screenshots.mjs --app "$APP" --channel ios-appstore
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.13 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
@@ -1365,7 +1365,7 @@ jobs:
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          node tooling/store/capture-deadline.mjs --minutes 8 --evidence-dir "${RUNNER_TEMP}/capture-evidence/iap" -- node tooling/store/capture-iap-review.mjs --app "$APP"
+          node tooling/store/capture-deadline.mjs --minutes 13 --evidence-dir "${RUNNER_TEMP}/capture-evidence/iap" -- node tooling/store/capture-iap-review.mjs --app "$APP"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name store-screenshots.capture-ios.18 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"

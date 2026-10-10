@@ -286,6 +286,28 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.heartbeats.11 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Each box runs what its declaration says
+        if: ${{ !cancelled() }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_READ_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          set +e
+          node tooling/ops/check-box-declared.mjs --from-manifest --cloudflare-read-paged
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            # NO BACKTICKS ANYWHERE IN THESE STRINGS (see the analytics step above).
+            echo "::error title=What the boxes run is UNKNOWN - nothing was compared::The box_runtime_manifest table could not be read, a box has never posted a runtime block past its firstDue, a read the box posted is null, or a declared version is still UNREAD. NOTHING was judged, and that is never a pass. The step log names what could not be read."
+          elif [ "$code" -eq 1 ]; then
+            echo "::error title=A box runs something its declaration does not say::A container runs that no service declares, a declared container or unit is not running, a version differs, the box has needed a reboot for more than 7 days, or it stopped posting. The step log names the box and the item. Edit tooling/boxes/BOX.json to what should run, or put the box back; the box script is tooling/ops/boxes/post-config-manifest.sh."
+          fi
+          exit "$code"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.heartbeats.12 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
         continue-on-error: true
@@ -1655,6 +1677,26 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.tech-currency.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: No action we pin uses a tag ref, at any depth
+        if: ${{ !cancelled() }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          set +e
+          node tooling/ci/check-nested-action-pins.mjs
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            echo "::error title=Nested action pins are UNKNOWN - an action file could not be read::COVERAGE LOST, not clean. The step log names the action and the HTTP answer."
+          elif [ "$code" -eq 1 ]; then
+            echo "::error title=An action we pin uses another action by tag::The step log names each nested uses: and the chain that reaches it. GitHub's SHA-pinning setting would refuse every job that reaches it: move off that action version (or replace it) before the setting is turned on."
+          fi
+          exit "$code"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name ops-watch.tech-currency.4 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
         continue-on-error: true

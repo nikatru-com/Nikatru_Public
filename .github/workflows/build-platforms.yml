@@ -176,6 +176,18 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.prepare.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: The tagged version carries its release notes
+        if: (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') == 'tag'
+        env:
+          REF_NAME: ${{ env.NIKATRU_REF_NAME }}
+          REF_TYPE: ${{ (startsWith(github.event.client_payload.ref || 'refs/heads/main', 'refs/tags/') && 'tag' || 'branch') }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          node tooling/ci/assert-release-notes.mjs --tag "$REF_NAME" --ref-type "$REF_TYPE"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.prepare.4 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: The matrix comes from the workspace, never from this file
         id: workspace
         env:
@@ -195,7 +207,7 @@ jobs:
           echo "Building: ${apps}" >> "$GITHUB_STEP_SUMMARY"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.prepare.4 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name build-platforms.prepare.5 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()
