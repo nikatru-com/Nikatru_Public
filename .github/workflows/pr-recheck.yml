@@ -3,7 +3,7 @@
 
 name: PR recheck
 
-run-name: "PR recheck · ${{ github.event.client_payload.head_sha }}"
+run-name: "PR recheck · ${{ github.event.client_payload.head_sha }} (PR #${{ github.event.client_payload.pr }})"
 
 on:
   repository_dispatch:
@@ -15,6 +15,7 @@ concurrency:
 
 permissions:
   actions: write
+  id-token: write
 
 jobs:
   nikatru-recheck:
@@ -50,10 +51,13 @@ jobs:
           # One signed live read of the private PR (POST /pr-meta): its head NOW, its state, and the
           # newest ci-gate status on that head. Sets live_head, live_state and gate_url.
           read_live() {
-            local ts sig meta line
+            local ts sig meta line oidc
             ts=$(date +%s)
+            # ⏱ sysfix-a4-gh-bridge (A4-01): this job's OIDC token — the bridge reads only this run's own PR.
+            oidc=$(curl -sS --fail --max-time 30 --max-redirs 0 -H "authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=nikatru-gh-bridge-propose" | jq -r 'try .value catch ""') || unknown "the runner would not mint this job's OIDC token"
+            [[ "$oidc" =~ ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]] || unknown "the runner answered with no OIDC token"
             sig=$(python3 -c 'import hashlib, hmac, os, sys; print(hmac.new(os.environ["BRIDGE_READ_SECRET"].encode(), sys.argv[1].encode(), hashlib.sha256).hexdigest())' "$NIKATRU_P_PR.$NIKATRU_P_HEAD_SHA.$ts")
-            meta=$(curl -sS --fail --max-time 30 --max-redirs 0 -X POST -H 'content-type: application/json' -H "x-bridge-signature: sha256=$sig" --data "{\"number\":$NIKATRU_P_PR,\"sha\":\"$NIKATRU_P_HEAD_SHA\",\"ts\":$ts}" "$NIKATRU_BRIDGE_READ_URL") || unknown "the bridge's live read of PR #$NIKATRU_P_PR failed"
+            meta=$(curl -sS --fail --max-time 30 --max-redirs 0 -X POST -H 'content-type: application/json' -H "x-bridge-signature: sha256=$sig" -H "x-bridge-oidc: $oidc" --data "{\"number\":$NIKATRU_P_PR,\"sha\":\"$NIKATRU_P_HEAD_SHA\",\"ts\":$ts}" "$NIKATRU_BRIDGE_READ_URL") || unknown "the bridge's live read of PR #$NIKATRU_P_PR failed"
             line=$(jq -r --argjson n "$NIKATRU_P_PR" 'try (if .number == $n and (.head_sha | test("^[0-9a-f]{40}$")) and (.state | type) == "string" and (.ci_gate == null or (.ci_gate.target_url | type) == "string" or .ci_gate.target_url == null) then "\(.head_sha) \(.state) \(.ci_gate.target_url // "-")" else "" end) catch ""' <<<"$meta")
             [ -n "$line" ] || unknown "the bridge's answer for PR #$NIKATRU_P_PR is not the /pr-meta shape"
             read -r live_head live_state gate_url <<<"$line"

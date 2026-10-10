@@ -5,7 +5,7 @@ env:
 
 name: Symbolication proof
 
-run-name: "Symbolication proof · ${{ github.event.client_payload.sha }}"
+run-name: "Symbolication proof · ${{ inputs.app }}"
 
 on:
   workflow_dispatch:
@@ -31,6 +31,7 @@ jobs:
       contents: read
       checks: read
       actions: read
+      id-token: write
     outputs:
       app: ${{ steps.app.outputs.app }}
     steps:
@@ -117,6 +118,7 @@ jobs:
     needs: gate
     permissions:
       contents: read
+      id-token: write
     strategy:
       fail-fast: false
       matrix:

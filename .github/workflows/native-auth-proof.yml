@@ -5,7 +5,7 @@ env:
 
 name: Native auth proof
 
-run-name: "Native auth proof · ${{ github.event.client_payload.sha }}"
+run-name: "Native auth proof · ${{ inputs.app }}"
 
 on:
   workflow_dispatch:
@@ -38,6 +38,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      id-token: write
     outputs:
       app: ${{ steps.app.outputs.app }}
       darwin: ${{ steps.darwin.outputs.darwin }}
@@ -109,7 +110,7 @@ jobs:
           tail -n 1 "$RUNNER_TEMP/darwin.txt" >> "$GITHUB_OUTPUT"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.gate.3 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name native-auth-proof.gate.3 --public -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Store this job's red detail in the bridge's private home (generated)
         if: always()
         continue-on-error: true
@@ -130,6 +131,7 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
+      id-token: write
     env:
       APP: ${{ needs.gate.outputs.app }}
       PROOF_NEEDS_DEVICE: 'true'
@@ -321,6 +323,7 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
+      id-token: write
     env:
       APP: ${{ needs.gate.outputs.app }}
       PROOF_NEEDS_DEVICE: 'true'
@@ -490,6 +493,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
+      id-token: write
     env:
       APP: ${{ needs.gate.outputs.app }}
       PROOF_NEEDS_DEVICE: 'true'
@@ -641,6 +645,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
+      id-token: write
     defaults:
       run:
         shell: bash
@@ -805,6 +810,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
+      id-token: write
     env:
       APP: ${{ needs.gate.outputs.app }}
       PROOF_NEEDS_DEVICE: 'true'
@@ -976,6 +982,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
+      id-token: write
     env:
       APP: ${{ needs.gate.outputs.app }}
       PROOF_NEEDS_DEVICE: 'true'
@@ -1120,6 +1127,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
+      id-token: write
     env:
       APP: ${{ needs.gate.outputs.app }}
       PROOF_NEEDS_DEVICE: 'true'
@@ -1242,6 +1250,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
+      id-token: write
     env:
       APP: ${{ needs.gate.outputs.app }}
       PROOF_NEEDS_DEVICE: 'true'
@@ -1346,6 +1355,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
+      id-token: write
     defaults:
       run:
         shell: bash
@@ -1463,6 +1473,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
+      id-token: write
     env:
       APP: ${{ needs.gate.outputs.app }}
       PROOF_NEEDS_DEVICE: 'true'

@@ -5,8 +5,6 @@ env:
 
 name: Autopilot watch
 
-run-name: "Autopilot watch · ${{ github.event.client_payload.sha }}"
-
 on:
   schedule:
     - cron: '7,22,37,52 * * * *'
@@ -34,6 +32,7 @@ jobs:
       statuses: read
       pull-requests: read
       actions: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -104,6 +103,7 @@ jobs:
       contents: read
       actions: write
       issues: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

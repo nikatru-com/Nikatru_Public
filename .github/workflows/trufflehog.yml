@@ -5,8 +5,6 @@ env:
 
 name: TruffleHog
 
-run-name: "TruffleHog · ${{ github.event.client_payload.sha }}"
-
 on:
   schedule:
     - cron: '41 13 * * *'
@@ -24,6 +22,9 @@ jobs:
     name: Verified secrets across the full history
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

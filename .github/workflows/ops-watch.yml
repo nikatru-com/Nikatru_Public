@@ -5,8 +5,6 @@ env:
 
 name: Ops watch
 
-run-name: "Ops watch · ${{ github.event.client_payload.sha }}"
-
 on:
   workflow_dispatch:
     inputs:
@@ -73,6 +71,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -325,6 +324,9 @@ jobs:
     name: Every enumerated surface produced its expected output
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -398,6 +400,9 @@ jobs:
     name: The live auth config still matches what the repo recorded
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -477,6 +482,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -560,6 +566,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -691,6 +698,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -771,6 +779,9 @@ jobs:
     name: The live ops half — monitors, alarm chains, provider parity, GCP scope
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -947,6 +958,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -1129,6 +1141,9 @@ jobs:
     if: github.event.schedule == '45 7 * * 1' || (github.event.client_payload.event || github.event_name) == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 8
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -1215,7 +1230,7 @@ jobs:
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
           set +e
-          node tooling/ops/www-redirect-rule.mjs
+          node tooling/ops/www-redirect-rule.mjs --read-token-pending-until 2026-10-21
           code=$?
           set -e
           if [ "$code" -eq 2 ]; then
@@ -1309,6 +1324,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+      id-token: write
     outputs:
       exit: ${{ steps.ledger.outputs.exit }}
       unexplained: ${{ steps.ledger.outputs.unexplained }}
@@ -1377,6 +1393,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          BRIDGE_READ_SECRET: ${{ secrets.BRIDGE_READ_SECRET }}
+          NIKATRU_BRIDGE_OPS_URL: https://gh-bridge.nikatru.workers.dev/ops
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
@@ -1443,6 +1461,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -1526,6 +1545,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -1619,6 +1639,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -1718,6 +1739,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      id-token: write
     outputs:
       exit: ${{ steps.review.outputs.exit }}
     steps:
@@ -1844,6 +1866,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -1958,6 +1981,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

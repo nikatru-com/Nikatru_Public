@@ -5,8 +5,6 @@ env:
 
 name: Redeploy stranded lanes
 
-run-name: "Redeploy stranded lanes · ${{ github.event.client_payload.sha }}"
-
 on:
   workflow_run:
     workflows: [CI, Build apps]
@@ -31,6 +29,7 @@ jobs:
       contents: read
       checks: read
       actions: write
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

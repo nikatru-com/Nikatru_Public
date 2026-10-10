@@ -5,7 +5,7 @@ env:
 
 name: Regenerate Gradle verification
 
-run-name: "Regenerate Gradle verification · ${{ github.event.client_payload.sha }}"
+run-name: "Regenerate Gradle verification · ${{ inputs.app }}"
 
 on:
   workflow_dispatch:
@@ -35,6 +35,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      id-token: write
     outputs:
       app: ${{ steps.app.outputs.app }}
     steps:
@@ -141,6 +142,7 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
+      id-token: write
     env:
       APP: ${{ needs.gate.outputs.app }}
       ANDROID_BUILD_LANES: apk/android-play/pr appbundle/android-play/pr apk/apps-gov-in/pr apk/android-play/release appbundle/android-play/release apk/apps-gov-in/release

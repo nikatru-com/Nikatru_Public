@@ -186,6 +186,11 @@ RETRY_STATUSES = (0, 502, 503, 504)
 # `x ci/site-tokens success -> HTTP 502 (GitHub call failed)`. The bridge's OWN 500 (a binding unset) is not retried.
 RETRY_UPSTREAMS = (0, 500, 502, 503, 504)
 RETRY_DELAYS = (2, 6)
+# ⏱ 2026-10-10 (fix-pr216, independent review of PR #216, finding 1): A 429 IS TRANSIENT TOO. The bridge's /report
+# bucket refills each minute, and one run posts one report per lane plus one for the gate, so a burst of heads in
+# one minute could 429 a green run's statuses (`x … -> HTTP 429`, report.py exit 1). A 429 is retried after
+# RATE_DELAYS seconds — together past one whole bucket period (60 s), so the next attempt meets a fresh bucket.
+RATE_DELAYS = (20, 45)
 
 
 class Lost(Exception):
@@ -453,11 +458,12 @@ def post(url, secret, body, timeout, opener=urllib.request.urlopen, sleep=time.s
     raw = json.dumps(body, ensure_ascii=False).encode('utf-8')
     for attempt in range(len(RETRY_DELAYS) + 1):
         status, why, upstream = post_once(url, secret, raw, opener, timeout)
-        transient = status in RETRY_STATUSES and (status != 502 or upstream is None or upstream in RETRY_UPSTREAMS)
+        transient = status == 429 or (status in RETRY_STATUSES and (status != 502 or upstream is None or upstream in RETRY_UPSTREAMS))
         if not transient or attempt == len(RETRY_DELAYS):
             return status, why
-        print(f'-- HTTP {status} is transient; retrying in {RETRY_DELAYS[attempt]} s', file=sys.stderr)
-        sleep(RETRY_DELAYS[attempt])
+        wait = (RATE_DELAYS if status == 429 else RETRY_DELAYS)[attempt]
+        print(f'-- HTTP {status} is transient; retrying in {wait} s', file=sys.stderr)
+        sleep(wait)
 
 
 def post_once(url, secret, raw, opener, timeout):

@@ -127,6 +127,9 @@ jobs:
       fail-fast: false
       matrix:
         app: ${{ fromJSON(needs.prepare.outputs.apps) }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -1132,6 +1135,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

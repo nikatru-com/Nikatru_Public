@@ -5,7 +5,7 @@ env:
 
 name: "Store submit: Apple App Store"
 
-run-name: "Store submit: Apple App Store · ${{ github.event.client_payload.sha }}"
+run-name: "Store submit: Apple App Store · ${{ inputs.app }} · ${{ inputs.confirm_ios }} · ${{ inputs.confirm_macos }}"
 
 on:
   workflow_dispatch:
@@ -44,6 +44,11 @@ jobs:
     timeout-minutes: 25
     outputs:
       app: ${{ steps.app.outputs.app }}
+    permissions:
+      contents: read
+      checks: read
+      actions: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -134,6 +139,7 @@ jobs:
     permissions:
       contents: read
       deployments: write
+      id-token: write
     outputs:
       artifact: ${{ steps.bytes.outputs.artifact }}
       ipa_sha256: ${{ steps.bytes.outputs.ipa_sha256 }}

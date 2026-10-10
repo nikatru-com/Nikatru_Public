@@ -5,7 +5,7 @@ env:
 
 name: Rollback
 
-run-name: "Rollback · ${{ github.event.client_payload.sha }}"
+run-name: "Rollback · ${{ inputs.unit }} · ${{ inputs.deployment }} · ${{ inputs.dry_run }}"
 
 on:
   workflow_dispatch:

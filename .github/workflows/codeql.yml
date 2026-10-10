@@ -147,7 +147,7 @@ jobs:
         with:
           repository: ${{ env.NIKATRU_PRIVATE_REPO }}
           ref: ${{ github.event.client_payload.event == 'pull_request' && format('refs/pull/{0}/merge', github.event.client_payload.pr) || github.event.client_payload.sha || 'main' }}
-          fetch-depth: ${{ env.NIKATRU_PRIVATE_REPO && '2' || '1' }}
+          fetch-depth: ${{ env.NIKATRU_PRIVATE_REPO && '11' || '1' }}
           ssh-key: ${{ secrets.PRIVATE_DEPLOY_KEY }}
           persist-credentials: false
       - name: Name the private commit (generated)
@@ -197,15 +197,42 @@ jobs:
           upload-database: false
       - uses: ./.github/actions/setup-node
         if: ${{ (github.event.client_payload.event || github.event_name) != 'pull_request' || env.NIKATRU_PRIVATE_REPO != '' }}
-      - name: CodeQL counts, the alerts to the private pull request
-        if: ${{ env.NIKATRU_PRIVATE_REPO != '' }}
+      - name: Name main's commits a CodeQL baseline may be restored from
+        if: ${{ (github.event.client_payload.event || github.event_name) == 'pull_request' && env.NIKATRU_PRIVATE_REPO != '' }}
+        id: baseline-keys
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          node tooling/ci/codeql-sarif-report.mjs "$RUNNER_TEMP/codeql-sarif"
+          node tooling/ci/codeql-sarif-report.mjs --emit-baseline-keys
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name codeql.analyze.5 --public -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name codeql.analyze.5 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Restore main's CodeQL baseline
+        if: ${{ (github.event.client_payload.event || github.event_name) == 'pull_request' && env.NIKATRU_PRIVATE_REPO != '' }}
+        id: baseline
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ runner.temp }}/codeql-baseline
+          key: codeql-main-baseline-${{ (github.event.client_payload.event == 'pull_request' && github.event.client_payload.base_sha || '') }}
+          restore-keys: ${{ steps.baseline-keys.outputs.keys }}
+      - name: CodeQL counts, the alerts to the private pull request
+        if: ${{ env.NIKATRU_PRIVATE_REPO != '' }}
+        id: sarif-report
+        env:
+          BASELINE_KEY: ${{ steps.baseline.outputs.cache-matched-key }}
+        run: |
+          NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
+          cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
+          node tooling/ci/codeql-sarif-report.mjs "$RUNNER_TEMP/codeql-sarif" --baseline "$RUNNER_TEMP/codeql-baseline/baseline.json" --baseline-key "$BASELINE_KEY" --write-baseline "$RUNNER_TEMP/codeql-baseline/baseline.json"
+          NIKATRU_QUIET_EOF
+          NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name codeql.analyze.7 --public -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+      - name: Save this main analysis's CodeQL baseline
+        if: ${{ always() && (github.event.client_payload.event || github.event_name) != 'pull_request' && env.NIKATRU_PRIVATE_REPO != '' && steps.sarif-report.outcome != 'skipped' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ runner.temp }}/codeql-baseline
+          key: codeql-main-baseline-${{ env.NIKATRU_SHA }}
       - name: Every open CodeQL alert on main is fixed in code or carries a disposition
         if: ${{ (github.event.client_payload.event || github.event_name) != 'pull_request' && env.NIKATRU_PRIVATE_REPO == '' }}
         timeout-minutes: 4
@@ -219,7 +246,7 @@ jobs:
           node --single-threaded tooling/ci/assert-alert-disposition.mjs --limb C --analysis-of "$NIKATRU_SHA"
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
-          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name codeql.analyze.6 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
+          node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name codeql.analyze.9 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
       - name: Hand this job's red detail to the report job, sealed (generated)
         id: nikatru-handoff
         if: always()

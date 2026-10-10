@@ -5,8 +5,6 @@ env:
 
 name: Deploy sandbox
 
-run-name: "Deploy sandbox · ${{ github.event.client_payload.sha }}"
-
 on:
   workflow_dispatch:
     inputs:
@@ -34,6 +32,11 @@ jobs:
       workers: ${{ steps.set.outputs.workers }}
       count: ${{ steps.set.outputs.count }}
       platform: ${{ steps.set.outputs.platform }}
+    permissions:
+      contents: read
+      checks: read
+      actions: read
+      id-token: write
     steps:
       - name: Check out the private tree (generated)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
