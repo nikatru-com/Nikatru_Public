@@ -579,16 +579,15 @@ jobs:
           NIKATRU_QUIET_EOF
           NIKATRU_SHELL="${BASH:-bash}"; if command -v cygpath >/dev/null 2>&1; then NIKATRU_SHELL="$(cygpath -w "$NIKATRU_SHELL")"; fi
           node "$GITHUB_WORKSPACE/tooling/ci/quiet-step.mjs" --name lane-sites.sites.11 -- "$NIKATRU_SHELL" -e "$NIKATRU_QUIET"
-      - name: RED CONTROL — the scan fails an unlabeled button, a covering sticky nav and a deleted register row
+      - name: RED CONTROL — the scan fails an unlabeled button, a covering sticky nav and an unregistered dark-scheme contrast failure
         shell: bash
         run: |
           NIKATRU_QUIET="$(mktemp "${RUNNER_TEMP:-/tmp}/nikatru-step.XXXXXX")"
           cat > "$NIKATRU_QUIET" <<'NIKATRU_QUIET_EOF'
-          node -e "const d=require('./tooling/a11y/exceptions.json');d.exceptions=d.exceptions.filter(r=>r.id!=='A11Y-EX-APPS-DARK-LINK-CONTRAST');require('fs').writeFileSync(process.env.RUNNER_TEMP+'/a11y-minus.json',JSON.stringify(d))"
           for args in \
             "--site tooling/a11y/fixtures --page tooling/a11y/fixtures/unlabeled-button.html" \
             "--site tooling/a11y/fixtures --page tooling/a11y/fixtures/sticky-nav.html" \
-            "--page sites/nikatru/apps/index.html --register $RUNNER_TEMP/a11y-minus.json"; do
+            "--site tooling/a11y/fixtures --page tooling/a11y/fixtures/dark-link-contrast.html"; do
             code=0
             node tooling/a11y/scan.mjs $args || code=$?
             echo "scan $args -> exit $code"
